@@ -1,0 +1,177 @@
+﻿
+
+@inject IJSRuntime JSRuntime
+@inject ILogger<Footer> Logger
+
+<div @onclick="ScrollToTop" class="scroll-to-top"><i class="fa fa-arrow-up"></i></div>
+
+<footer>
+
+
+    <div class="container top-footer mt-4 mt-md-5 mb-md-4">
+
+        <div class="row ">
+            <div class="contact col-12 col-md-6 col-lg-3">
+                <div class="d-none d-md-block footer-logo"> Simple Store</div>
+                <div>
+                    <i class="fas fa-map-marker-alt"></i>
+                    Rynok Square, Ivano-Frankivsk,
+                    Ivano-Frankivsk Oblast, Ukraine, 76000
+                </div>
+                <div><i class="fas fa-envelope"></i><a href="mailto:nazar@nazar.com">nazar@nazar.com</a></div>
+                <div><i class="fas fa-phone-alt"></i><a href="tel:+">758-458-777</a></div>
+            </div>
+            <div class="pages @pagesOpenClass col-12 col-md-6 col-lg-3">
+                <div class="footer-title" @onclick="PagesShow">About Simple Store</div>
+                <div id="pages-content">
+                    <div class='pages-measuring-wrapper'>
+                        <div>
+                            <a href="/home">Home</a>
+                        </div>
+                        <div>
+                            <a href="/shop">Shop</a>
+                        </div>
+                        <div>
+                            <a href="/contact">Contact</a>
+                        </div>
+                        <div>
+                            <a href="/about">About Us</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="categories @categoriesOpenClass col-12 col-md-6 col-lg-3">
+                <div class="footer-title" @onclick="CategoriesShow">Online Shop</div>
+                <div id="categories-content">
+                    <div class='categories-measuring-wrapper'>
+                        <div> <a href="@WomenCategory">Women</a></div>
+                        <div>
+                            <a href="@MenCategory">Men</a>
+                        </div>
+                        <div>
+                            <a href="@GirlCategory">Girl</a>
+                        </div>
+                        <div>
+                            <a href="@BoyCategory">Boy</a>
+                        </div>
+                        <div>
+                            <a href="@BabyCategory">Baby</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="information @informationOpenClass col-12 col-md-6 col-lg-3">
+                <div class="footer-title" @onclick="InformationShow">Help &amp; Information</div>
+                <div id="information-content">
+                    <div class='information-measuring-wrapper'>
+                        <div>
+                            <a href="#">Orders</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+
+
+    <div class="bottom-footer">
+        <div class="container">
+            <div class="row ">
+                <div class="col-12 col-md-5 footer-copyright">©@year<span> Simple Shop</span>. All rights reserved.</div>
+                <ul class="col-12 col-md-3 d-flex justify-content-center">
+                    <li><a href="#" target="_self"><i class="fab fa-facebook"></i></a></li>
+                    <li><a href="#" target="_self"><i class="fab fa-skype"></i></a></li>
+                    <li><a href="#" target="_self"><i class="fab fa-pinterest"></i></a></li>
+                    <li><a href="#" target="_self"><i class="fab fa-twitter"></i></a></li>
+                    <li><a href="#" target="_self"><i class="fab fa-instagram"></i></a></li>
+                </ul>
+
+                <ul class="col-12 col-md-4 d-flex justify-content-center justify-content-md-end">
+                    <li><a href="#">Privacy Policy </a></li>
+                    <li><a href="#">Terms of Use </a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</footer>
+
+
+@code {
+    public string year = DateTime.Now.Year.ToString();
+
+    bool informationIsClicked = false;
+    bool pagesIsClicked = false;
+    bool categoriesIsClicked = false;
+
+     public string MenCategory = "/shop/{\"collection\":\"Men\"}";
+    public string WomenCategory = "/shop/{\"collection\":\"Women\"}";
+    public string GirlCategory = "/shop/{\"collection\":\"Girl\"}";
+    public string BoyCategory = "/shop/{\"collection\":\"Boy\"}";
+    public string BabyCategory = "/shop/{\"collection\":\"Baby\"}";
+
+    string informationOpenClass => informationIsClicked ? "show" : null;
+    string pagesOpenClass => pagesIsClicked ? "show" : null;
+    string categoriesOpenClass => categoriesIsClicked ? "show" : null;
+
+
+    public async void ScrollToTop()
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("Body.ScrollToTop");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error");
+        }
+    }
+
+
+    public async void InformationShow()
+    {
+        try
+        {
+            informationIsClicked = !informationIsClicked;
+
+            await JSRuntime.InvokeAsync<string>("Body.FooterGrowContent", "information");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error");
+        }
+
+    }
+
+    public async void PagesShow()
+    {
+        try
+        {
+
+            pagesIsClicked = !pagesIsClicked;
+
+            await JSRuntime.InvokeAsync<string>("Body.FooterGrowContent", "pages");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error");
+        }
+    }
+
+    public async void CategoriesShow()
+    {
+        try
+        {
+            categoriesIsClicked = !categoriesIsClicked;
+
+            await JSRuntime.InvokeAsync<string>("Body.FooterGrowContent", "categories");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error");
+        }
+    }
+
+
+}

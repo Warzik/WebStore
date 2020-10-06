@@ -1,0 +1,34 @@
+﻿@inject IJSRuntime JSRuntime
+
+<div class="data-modal @dataModalOpenClass">
+    <div class="data-modal-dialog">
+        <div class="data-modal-content @dataModalOpenClass" style=" max-width: @MaxWigth;">
+            <div class="data-modal-header">
+                <h5 class="data-modal-title">@Title</h5>
+            </div>
+            @ChildContent
+
+        </div>
+    </div>
+</div>
+
+
+@code {
+    [Parameter]
+    public bool DataModalIsClicked { get; set; }
+
+    [Parameter]
+    public string Title { get; set; }
+
+     [Parameter]
+    public string MaxWigth { get; set; }
+
+    [Parameter]
+    public RenderFragment ChildContent { get; set; }
+
+   
+
+
+    string dataModalOpenClass => DataModalIsClicked ? "show" : null;
+
+}

@@ -1,0 +1,224 @@
+﻿@using System.IO;
+@using System.Drawing
+@*@using System.Threading;*@
+@using System.Timers;
+@implements IDisposable
+@inject ILogger<MainSlider> Logger
+
+<div class="slideshow-container" @onmouseover="ShowSliderNavigation" @onmouseout="HideSliderNavigation">
+
+    <div class="mySlides" style="display:@showStaticSlide">
+        <img src="/images/main-slider-1.jpg" />
+        <div class="slide-left-text">
+            <h5 class="sub-title">Spring - Summer 2019</h5>
+            <h2 class="big-text">FLASH SALE OF 70%</h2>
+            <p>
+                Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin eu sollicitudin enim, eget efficitur quam. Quisque eu eleifend urna.
+            </p>
+            <a href="#" class="slider-button">Shop now</a>
+        </div>
+    </div>
+
+    <div class="mySlides fade" style="@slidesActiveStyle[0]">
+        <img src="/images/main-slider-1.jpg" />
+        <div class="slide-left-text fadeInLeft">
+            <h5 class="sub-title">Spring - Summer 2019</h5>
+            <h2 class="big-text">FLASH SALE OF 70%</h2>
+            <p>
+                Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin eu sollicitudin enim, eget efficitur quam. Quisque eu eleifend urna.
+            </p>
+            <a href="#" class="slider-button">Shop now</a>
+        </div>
+    </div>
+
+    <div class="mySlides fade" style="@slidesActiveStyle[1]">
+        <img src="/images/main-slider-2.jpg" />
+        <div class="slide-right-text fadeInRight">
+            <h5 class="sub-title">Spring - Summer 2019</h5>
+            <h2 class="big-text">BEST OF COLLECTION!</h2>
+            <p>
+                Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin eu sollicitudin enim, eget efficitur quam. Quisque eu eleifend urna.
+            </p>
+            <a href="#" class="slider-button">Shop now</a>
+        </div>
+    </div>
+
+    @*<div class="mySlides fade" style="@slidesActiveStyle[2]">
+            <img src="/images/main-slider-3.jpg" />
+            <div class="slide-left-text fadeInLeft">
+                <h5 class="sub-title">Spring - Summer 2019</h5>
+                <h2 class="big-text">FLASH SALE OF 70%</h2>
+                <p>
+                    Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin eu sollicitudin enim, eget efficitur quam. Quisque eu eleifend urna.
+                </p>
+                <a href="#" class="slider-button">Shop now</a>
+            </div>
+        </div>
+        <div class="mySlides fade" style="@slidesActiveStyle[3]">
+            <img src="/images/main-slider-4.jpg" />
+            <div class="slide-right-text fadeInRight">
+                <h5 class="sub-title">Spring - Summer 2019</h5>
+                <h2 class="big-text">BEST OF COLLECTION!</h2>
+                <p>
+                    Lorem ipsum dolor sit amet, consectetur adipiscing elit. Proin eu sollicitudin enim, eget efficitur quam. Quisque eu eleifend urna.
+                </p>
+                <a href="#" class="slider-button">Shop now</a>
+            </div>
+        </div>*@
+
+
+    <a class="prev " @onclick="@(() => PlusSlides(-1))">&#10094;</a>
+    <a class="next " @onclick="@(() => PlusSlides(1))">&#10095;</a>
+
+
+    <div class="dots @navigationClass">
+        <span class="dot @dotsActiveClass[0]" @onclick="@(() => CurrentSlide(1))"></span>
+        <span class="dot @dotsActiveClass[1]" @onclick="@(() => CurrentSlide(2))"></span>
+        @*<span class="dot @dotsActiveClass[2]" @onclick="@(() => CurrentSlide(3))"></span>
+            <span class="dot @dotsActiveClass[3]" @onclick="@(() => CurrentSlide(4))"></span>*@
+    </div>
+</div>
+
+@code {
+    public int slideIndex = 1;
+    //public const int slides = 4;
+    public const int slides = 2;
+
+    //fix bug whith prerender
+    string showStaticSlide = "block;";
+
+    string[] slidesActiveStyle = new string[slides];
+    string[] dotsActiveClass = new string[slides];
+
+    string navigationClass = "";
+
+
+    private System.Timers.Timer SliderTimer = new System.Timers.Timer();
+
+    protected override void OnInitialized()
+    {
+        try
+        {
+             SliderTimer.Interval = 5000;
+        SliderTimer.AutoReset = true;
+        SliderTimer.Elapsed += OnTimerElapsed;
+        SliderTimer.Start();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error");
+        }
+       
+    }
+
+
+    //Main slider
+    public void ShowSliderNavigation(MouseEventArgs uIMouse)
+    {
+        navigationClass = "show";
+    }
+
+    public void HideSliderNavigation(MouseEventArgs uIMouse)
+    {
+        navigationClass = "";
+    }
+
+
+    private void OnTimerElapsed(object sender, System.Timers.ElapsedEventArgs e)
+    {
+
+        InvokeAsync(() =>
+        {
+            try
+            {
+                PlusSlidesForTimer(1);
+                StateHasChanged();
+            }
+             catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error");
+        }
+
+        });
+    }
+
+    public void Dispose()
+    {
+
+        SliderTimer.Stop();
+        SliderTimer = null;
+    }
+
+    public void PlusSlidesForTimer(int n)
+    {
+        try
+        {
+            slideIndex += n;
+
+            if (slideIndex > slides) slideIndex = 1;
+            if (slideIndex < 1) slideIndex = slides;
+
+            ShowSlides(slideIndex);
+        }
+         catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error");
+        }
+
+    }
+
+    public void TimerRestart()
+    {
+        SliderTimer.Stop();
+        SliderTimer.Start();
+    }
+
+    public void PlusSlides(int n)
+    {
+        try
+        {
+            TimerRestart();
+
+            slideIndex += n;
+
+            if (slideIndex > slides) slideIndex = 1;
+            if (slideIndex < 1) slideIndex = slides;
+
+            ShowSlides(slideIndex);
+        }
+         catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error");
+        }
+
+    }
+
+    public void CurrentSlide(int n)
+    {
+        TimerRestart();
+        ShowSlides(slideIndex = n);
+    }
+
+    public void ShowSlides(int n)
+    {
+        try
+        {
+            showStaticSlide = "none;";
+
+            for (int i = 0; i < slides; i++)
+            {
+                slidesActiveStyle[i] = "display:none;";
+                dotsActiveClass[i] = "";
+            }
+
+            slidesActiveStyle[slideIndex - 1] = "display:block;";
+            dotsActiveClass[slideIndex - 1] = " active";
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error");
+        }
+
+    }
+
+}

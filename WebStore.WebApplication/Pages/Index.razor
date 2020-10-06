@@ -1,0 +1,477 @@
+﻿@page "/"
+@page "/home"
+@inject IProductService _productService;
+@inject IWishService _wishService;
+@inject IOrderService _orderService;
+@inject IOrderDetailService _orderDetailService;
+@inject IProductDetailService _productDetailService;
+@inject UserManager<ApplicationUser> _userManager;
+@inject IJSRuntime JSRuntime;
+@inject IMapper _mapper;
+@inject WebApplication.Services.DataNotificationService  _dataNotificationService;
+@implements IDisposable;
+@inject ILogger<Index> Logger
+
+<div class="container-fluid margin-top">
+    <div class="row">
+        <MainSlider />
+    </div>
+    <div class="categories">
+        <div class="container">
+            <div class="row">
+                <div class="categories-item col-lg-6 col-md-6 col-sm-12 col-xs-12">
+                    <div class="image-wrapper">
+                        <a href="@WomenCategory">
+                            <img src="/images/categories-women.jpg" />
+                        </a>
+                        <div class="btn-wrapper"> <a href="@WomenCategory">Women</a></div>
+                    </div>
+                </div>
+                <div class="categories-item col-lg-6 col-md-6 col-sm-12 col-xs-12">
+                    <div class="image-wrapper">
+                        <a href="@MenCategory">
+                            <img src="/images/categories-men.jpg" />
+                        </a>
+                        <div class="btn-wrapper"> <a href="@MenCategory">Men</a></div>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="categories-item col-lg-4 col-md-4 col-sm-6 col-xs-12">
+                    <div class="image-wrapper">
+                        <a href="@GirlCategory">
+                            <img src="/images/categories-girl.jpg" />
+                        </a>
+                        <div class="btn-wrapper"><a href="@GirlCategory">Girl</a></div>
+                    </div>
+                </div>
+                <div class="categories-item col-lg-4 col-md-4 col-sm-6 col-xs-12">
+                    <div class="image-wrapper">
+                        <a href="@BoyCategory">
+                            <img src="/images/categories-boy.jpg" />
+                        </a>
+                        <div class="btn-wrapper"> <a href="@BoyCategory">Boy</a></div>
+                    </div>
+                </div>
+                <div class="categories-item col-lg-4 col-md-4 col-sm-6 offset-sm-3  offset-md-0 col-xs-12">
+                    <div class="image-wrapper">
+                        <a href="@BabyCategory">
+                            <img src="/images/categories-baby.jpg" />
+                        </a>
+                        <div class="btn-wrapper"> <a href="@BabyCategory">Baby</a></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="trending mt-4">
+        <div class="container">
+            <div class="content-heading">
+                <h2 class="title">TRENDING</h2>
+                <div class="block-note">Top trending products</div>
+            </div>
+            <div class="content">
+
+
+                @if (topReviews == null)
+                {
+                    <div class="d-flex justify-content-center">
+
+                        <div class="small-lds-ellipsis"><div></div><div></div><div></div><div></div></div>
+
+                    </div>
+
+                }
+                else
+                {
+                    <div class="row">
+                        @foreach (var product in topReviews)
+                        {
+                            <div class="col-6 col-md-4 col-lg-3">
+                                <ShopCard Product="product"
+                                          AuthenticatedUser="isAuthenticatedUser"
+                                          ActiveQuickView="true"
+                                          AddWish="AddWish"
+                                          DeleteWish="DeleteWish"
+                                          AddToCart="AddProductToCart"
+                                          RemoveFromCart="RemoveProductFromCart"
+                                          OnQuickViewClick="OpenQueckView"
+                                          Wishes="wishes"
+                                          OrderDetails="currentOrder.OrderDetails.ToList()" />
+                            </div>
+                        }
+                    </div>
+                }
+
+            </div>
+        </div>
+    </div>
+
+    <div class="new-collection mt-4">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-12 col-sm-6">
+                    <div class="content-item">
+                        <a href="@WomenCategory" class="image-wrapper">
+                            <div class="image-block">
+                                <div class="title">Summer 2020</div>
+                                <div class="text">New Woman collection</div>
+                                <span>Get Now</span>
+                            </div>
+                            <img src="/images/new-collection1.jpg" />
+
+                        </a>
+                    </div>
+                </div>
+                <div class="col-12 col-sm-6 mt-3 mt-sm-0">
+                    <div class="content-item">
+                        <a href="@MenCategory" class="image-wrapper">
+                            <div class="image-block">
+                                <div class="title">Summer 2020</div>
+                                <div class="text">New Man collection</div>
+                                <span>10% off</span>
+                            </div>
+                            <img src="/images/new-collection2.jpg" />
+
+
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="trending mt-4">
+        <div class="container">
+            <div class="content-heading">
+                <h2 class="title">SALES</h2>
+                <div class="block-note">Top products on sale</div>
+            </div>
+            <div class="content">
+
+                @if (topSales == null)
+                {
+                    <div class="d-flex justify-content-center">
+
+                        <div class="small-lds-ellipsis"><div></div><div></div><div></div><div></div></div>
+
+                    </div>
+
+                }
+                else if (currentOrder != null)
+                {
+                    <div class="row">
+                        @foreach (var product in topSales)
+                        {
+                            <div class="col-6 col-md-4 col-lg-3">
+                                <ShopCard Product="product"
+                                          AuthenticatedUser="isAuthenticatedUser"
+                                          ActiveQuickView="true"
+                                          AddWish="AddWish"
+                                          DeleteWish="DeleteWish"
+                                          AddToCart="AddProductToCart"
+                                          RemoveFromCart="RemoveProductFromCart"
+                                          OnQuickViewClick="OpenQueckView"
+                                          Wishes="wishes"
+                                          OrderDetails="currentOrder.OrderDetails.ToList()" />
+                            </div>
+                        }
+                    </div>
+                }
+
+            </div>
+        </div>
+    </div>
+
+    <div class="services mt-4">
+        <div class="container">
+            <div class="row">
+                <div class="col-xs-12 col-md-6 col-lg-4">
+                    <div class="row service-item">
+                        <div class="service-icon col-2"><i class="fas fa-headset"></i></div>
+                        <div class="service-description col-9">
+                            <h4 class="service-title">SUPPORT 24/7</h4>
+                            <p>Contact us 24 hours a day, 7 days a week</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xs-12 col-md-6 col-lg-4">
+                    <div class="row service-item">
+                        <div class="service-icon col-2"><i class="fas fa-share"></i></div>
+                        <div class="service-description col-9">
+                            <h4 class="service-title">14 DAYS RETURN</h4>
+                            <p>Return it within 14 days for an exchange.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xs-12 col-md-6 offset-md-3  offset-lg-0 col-lg-4">
+                    <div class="row service-item">
+                        <div class="service-icon col-2"><i class="fas fa-shipping-fast"></i></div>
+                        <div class="service-description col-9">
+                            <h4 class="service-title">FREE SHIPPING</h4>
+                            <p>Free shipping on order above $100</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<QuickViewModal MaxWigth="1000px"
+                Title="Product View"
+                ModalIsClicked="quickViewIsClicked"
+                AuthenticatedUser="isAuthenticatedUser"
+                Product="currentProduct"
+                ProductDetails="currentProductDetails"
+                ModalClosing="CloseQueckView"
+                AddWish="AddWish"
+                DeleteWish="DeleteWish"
+                AddToCart="AddProductToCart"
+                RemoveFromCart="RemoveProductFromCart"
+                Wishes="wishes"
+                OrderDetails="currentOrder?.OrderDetails?.ToList()"></QuickViewModal>
+
+
+
+
+@code{
+    [CascadingParameter]
+    private Task<AuthenticationState> authenticationStateTask { get; set; }
+
+    public bool isAuthenticatedUser = false;
+    public string userID;
+    bool quickViewIsClicked = false;
+
+    public string MenCategory = "/shop/{\"collection\":\"Men\"}";
+    public string WomenCategory = "/shop/{\"collection\":\"Women\"}";
+    public string GirlCategory = "/shop/{\"collection\":\"Girl\"}";
+    public string BoyCategory = "/shop/{\"collection\":\"Boy\"}";
+    public string BabyCategory = "/shop/{\"collection\":\"Baby\"}";
+
+    bool productChanged = false;
+
+    List<IProductBLL> topSales;
+    List<IProductBLL> topReviews;
+    List<IWishBLL> wishes = new List<IWishBLL>();
+
+    IOrderBLL currentOrder;
+    IProductBLL currentProduct;
+    List<IProductDetailBLL> currentProductDetails;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var authState = await authenticationStateTask;
+            var user = authState.User;
+
+            if (user.Identity.IsAuthenticated && user.IsInRole("Customer"))
+            {
+                isAuthenticatedUser = true;
+                userID = (await _userManager.GetUserAsync(user)).Id;
+                currentOrder = _orderService.GetOrderByCustomerID(userID);
+            }
+
+            if (currentOrder == null)
+                currentOrder = new OrderBLL() { CustomerID = userID };
+
+            if (currentOrder.OrderDetails == null)
+                currentOrder.OrderDetails = new List<OrderDetailBLL>();
+
+            if (userID != null)
+                wishes = (await _wishService.GetAllByCustomerIDAsync(userID)).ToList();
+
+            topSales = (await _productService.GetTopSelesWithReviewsAsync()).ToList();
+            topReviews = (await _productService.GetTopCommentsWhitReviewsAsync()).ToList();
+
+
+            _dataNotificationService.OnChange += HandleChangesInCartOrWishModals;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+    }
+
+    public void HandleChangesInCartOrWishModals()
+    {
+        try
+        {
+            if (userID != null)
+            {
+                currentOrder = _orderService.GetOrderByCustomerID(userID);
+
+                wishes = _wishService.GetAllByCustomerID(userID).ToList();
+
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+    }
+
+    public void Dispose()
+    {
+        try
+        {
+            _dataNotificationService.OnChange -= HandleChangesInCartOrWishModals;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+    }
+
+
+    public void AddWish(IProductBLL product)
+    {
+        try
+        {
+            var wish = new WishBLL() { ProductID = product.ProductID, CustomerID = userID };
+            _wishService.Add(wish);
+
+            WishHasChanged(userID);
+
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+    }
+
+    public void DeleteWish(IProductBLL product)
+    {
+        try
+        {
+            _wishService.DeleteByProductAndCustomerIDs(product.ProductID, userID);
+
+            WishHasChanged(userID);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+    }
+
+    public void AddProductToCart(IProductBLL product)
+    {
+        try
+        {
+            OrderDetailBLL orderDetail;
+
+            var totalPrice = Math.Round(product.UnitPrice - ((product.UnitPrice / (decimal)100) * (decimal)product.Discount), 2);
+
+            orderDetail = new OrderDetailBLL() { Price = product.UnitPrice, Quantity = 1, Discount = product.Discount, Total = totalPrice, ProductID = product.ProductID };
+
+            if (currentOrder.OrderID == 0)
+            {
+                currentOrder.OrderDetails.Add(orderDetail);
+                _orderService.Add(currentOrder);
+            }
+            else
+            {
+                orderDetail.OrderID = currentOrder.OrderID;
+                _orderDetailService.Add(orderDetail);
+            }
+            if (quickViewIsClicked)
+            {
+                productChanged = true;
+            }
+
+            OrderDetailHasChanged(userID);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+    }
+
+    public async void RemoveProductFromCart(IOrderDetailBLL orderDetail)
+    {
+        try
+        {
+            if (orderDetail != null)
+                await _orderDetailService.Delete(orderDetail.OrderDetailID);
+
+            OrderDetailHasChanged(userID);
+
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+    }
+
+    public void OpenQueckView(IProductBLL product)
+    {
+        try
+        {
+            quickViewIsClicked = !quickViewIsClicked;
+
+            currentProduct = product;
+            currentProductDetails = _productDetailService.GetProductDetailsByProductID(product.ProductID).ToList();
+
+            JSRuntime.InvokeAsync<bool>("Body.Overflow", !quickViewIsClicked);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+    }
+
+    public async void CloseQueckView()
+    {
+        try
+        {
+            quickViewIsClicked = !quickViewIsClicked;
+            await JSRuntime.InvokeVoidAsync("Body.Overflow", !quickViewIsClicked);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+
+    }
+
+    public void OrderDetailHasChanged(string userID)
+    {
+        try
+        {
+            if (userID != null)
+                currentOrder = _orderService.GetOrderByCustomerID(userID);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+    }
+
+    public void WishHasChanged(string userID)
+    {
+
+        try
+        {
+             if (userID != null)
+            wishes = _wishService.GetAllByCustomerID(userID).ToList();
+        }
+         catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+       
+    }
+
+}

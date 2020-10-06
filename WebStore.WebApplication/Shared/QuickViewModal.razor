@@ -1,0 +1,487 @@
+﻿@inject NavigationManager NavigationManager;
+@inject ILogger<QuickViewModal> Logger;
+
+<div class="quick-view-modal @dataModalOpenClass">
+    <div class="quick-view-dialog">
+        <div class="quick-view-content @dataModalOpenClass" style=" max-width: @MaxWigth;">
+            <div class="close" @onclick="ModalClosing"><i class="fa fa-times" aria-hidden="true"></i></div>
+            @if (Product != null)
+            {
+                <div class="container-fluid">
+                    <div class="row">
+                        <div class="col-md-6 no-padding">
+                            <div class="quickview-slideshow">
+                                @{
+                                    ChangeImages();
+
+                                    if (images.Count > 0)
+                                    {
+                                        int j = 0;
+                                        @foreach (var image in images)
+                                        {
+                                            <div class="slide" style="@slidesActiveStyle[j]">
+                                                <img src="@image.Image" />
+                                            </div>
+                                            j++;
+                                        }
+                                    }
+
+                                    if (slides > 0)
+                                    {
+                                        <a class="prev " @onclick="@(() => PlusSlide(-1))">&#10094;</a>
+                                        <a class="next " @onclick="@(() => PlusSlide(1))">&#10095;</a>
+                                    }
+
+
+                                    <div class="dots @navigationClass">
+                                        @if (dotsActiveClass.Count > 0)
+                                        {
+                                            int i = 0;
+                                            foreach (var dot in dotsActiveClass)
+                                            {
+                                                int index = i + 1;
+                                                <span class="dot @dotsActiveClass[i]" @onclick="@(() => CurrentSlide(index))"></span>
+                                                i++;
+                                            }
+
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                        <div class="col-md-6  modal-description no-padding">
+
+                            <div class="quick-view-body">
+                                <div class="row">
+                                    <div class="col-12 "><span class="text-dark">Vendor:</span> <span class="text-gray">@Product.ProductFirm</span></div>
+                                    <div class="col-12 "><span class="text-dark">UPC:</span> <span class="text-gray">@Product.UPC</span></div>
+                                    <div class="col-12"><span class="text-dark">Quantity Per Unit:</span> <span class="text-gray">@Product.QuantityPerUnit</span></div>
+                                    <div class="col-12">
+                                        <span class="text-dark">Availability:</span>
+                                        @if (Product.ProductAvailable)
+                                        {
+                                            <span class="text-green">In stock</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-danger">Out of stock</span>
+                                        }
+                                    </div>
+                                </div>
+                                <div class="row ">
+                                    <h3 class="product-title col-12">@Product.ProductName</h3>
+                                </div>
+                                @if (Product.Discount == 0)
+                                {
+                                    <div class="price col-12 ">$@Product.UnitPrice</div>
+                                }
+                                else
+                                {
+                                    <div class="col-12 ">
+                                        <span class="old-price">$@Product.UnitPrice</span>
+
+                                        <span class="discount-price">$@(Math.Round(Product.UnitPrice - ((Product.UnitPrice / (decimal)100) * (decimal)Product.Discount), 2))</span>
+                                    </div>
+                                }
+                                <a href="#" class="col-12 ranking pt-1">
+                                    @{
+                                        ChangeStars();
+                                        for (int k = 0; k < 5; k++)
+                                        {
+                                            starsAverage--;
+                                            if (starsAverage >= 1)
+                                            {
+
+                                                <i class="fas fa-star"></i>
+                                                continue;
+                                            }
+                                            else if (starsAverage > 0)
+                                            {
+
+                                                <i class="fas fa-star-half-alt"></i>
+                                                continue;
+                                            }
+
+                                            <i class="far fa-star"></i>
+
+                                        }
+                                    }
+
+
+                                    @if (Product.Reviews?.Count > 0)
+                                    {
+
+                                        <span>
+                                            (@Product.Reviews?.Count)
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span> No reviews</span>
+                                    }
+
+                                </a>
+                                <div class="text-gray">
+                                    @Product.ProductDescription
+                                </div>
+
+
+
+                                <div class="product-collors">
+                                    @if (images.Count > 0)
+                                    {
+                                        int colorCount = 0;
+                                        <div> Colors:</div>
+                                        <div class="row">
+                                            @foreach (var image in images)
+                                            {
+                                                if (image.Color != null)
+                                                {
+                                                    <div class="color" @onclick="@(() => CurrentSlide(images.FindIndex(x => x == image) + 1))" style="background-color:@image.Color"> </div>
+                                                    colorCount++;
+                                                }
+
+                                            }
+                                            @if (colorCount == 0)
+                                            {
+                                                <span class="ml-3"> No Colors</span>
+                                            }
+                                        </div>
+                                    }
+                                </div>
+
+                                <div class="product-materials">
+                                    @if (images.Count > 0)
+                                    {
+                                        int materialCount = 0;
+                                        <div> Material:</div>
+                                        <div class="row">
+                                            @foreach (var image in images)
+                                            {
+                                                if (image.Material != null)
+                                                {
+                                                    <div class="material" @onclick="@(() => CurrentSlide(images.FindIndex(x => x == image) + 1))"> @image.Material</div>
+                                                    materialCount++;
+                                                }
+                                            }
+                                            @if (materialCount == 0)
+                                            {
+                                                <span class="ml-3"> No Materials</span>
+                                            }
+                                        </div>
+                                    }
+                                </div>
+
+                                <div class="row mt-3 justify-content-around">
+
+                                    <div class="icon-wrapper mr-3 @activeWishIcon" @onclick="HandleWishIconClick"><i class="far fa-heart"></i></div>
+
+                                    @if (!cartIconIsClicked)
+                                    {
+                                        <button class="btn btn-primary" @onclick="HandleAddCartIconClick"><i class="fas fa-cart-plus"></i> Add </button>
+                                    }
+                                    else
+                                    {
+                                        <button class="btn btn-primary" @onclick="HandleRemoveCartIconClick" style="background-color: #6c757d; border-color: #6c757d;"><i class="fas fa-eraser"></i> Remove</button>
+                                    }
+
+                                </div>
+
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public bool ModalIsClicked { get; set; }
+    [Parameter]
+    public IProductBLL Product { get; set; }
+    [Parameter]
+    public bool AuthenticatedUser { get; set; }
+    [Parameter]
+    public List<IProductDetailBLL> ProductDetails { get; set; }
+    [Parameter]
+    public string Title { get; set; }
+    [Parameter]
+    public string MaxWigth { get; set; }
+    [Parameter]
+    public List<IWishBLL> Wishes { get; set; }
+    [Parameter]
+    public List<OrderDetailBLL> OrderDetails { get; set; }
+    [Parameter]
+    public EventCallback ModalClosing { get; set; }
+    [Parameter]
+    public EventCallback<IProductBLL> AddWish { get; set; }
+    [Parameter]
+    public EventCallback<IProductBLL> DeleteWish { get; set; }
+    [Parameter]
+    public EventCallback<IProductBLL> AddToCart { get; set; }
+    [Parameter]
+    public EventCallback<IOrderDetailBLL> RemoveFromCart { get; set; }
+
+    public bool wishIconIsClicked = false;
+    public bool cartIconIsClicked = false;
+
+    string activeWishIcon => wishIconIsClicked ? "active" : null;
+
+    List<ProductImage> images;
+    List<string> slidesActiveStyle;
+    List<string> dotsActiveClass;
+    int slideIndex = 1;
+    int slides = 0;
+    double starsAverage = 0;
+
+    string navigationClass = "show";
+
+
+    protected override void OnParametersSet()
+    {
+
+        try
+        {
+            if (Product != null)
+            {
+                slideIndex = 1;
+                ChangeImages();
+                ChangeStars();
+
+                if (Wishes != null && Wishes.FirstOrDefault(x => x.ProductID == Product.ProductID) != null)
+                {
+                    wishIconIsClicked = true;
+                }
+                else
+                {
+                    wishIconIsClicked = false;
+                }
+
+                if (OrderDetails.FirstOrDefault(x => x.ProductID == Product.ProductID) != null)
+                {
+                    cartIconIsClicked = true;
+                }
+                else { cartIconIsClicked = false; }
+
+            }
+
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error");
+        }
+    }
+
+    public async void HandleWishIconClick()
+    {
+        try
+        {
+            if (AuthenticatedUser)
+            {
+                wishIconIsClicked = !wishIconIsClicked;
+                if (wishIconIsClicked)
+                {
+                    await AddWish.InvokeAsync(Product);
+                }
+                else
+                {
+                    await DeleteWish.InvokeAsync(Product);
+                }
+            }
+            else
+            {
+                NavigationManager.NavigateTo("/Identity/Account/Login", true);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error");
+        }
+
+    }
+
+    public async void HandleAddCartIconClick()
+    {
+        try
+        {
+            if (AuthenticatedUser)
+            {
+                cartIconIsClicked = !cartIconIsClicked;
+                await AddToCart.InvokeAsync(Product);
+            }
+            else
+            {
+                NavigationManager.NavigateTo("/Identity/Account/Login", true);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error");
+        }
+
+    }
+
+
+    public async void HandleRemoveCartIconClick()
+    {
+        try
+        {
+
+
+            if (AuthenticatedUser)
+            {
+                cartIconIsClicked = !cartIconIsClicked;
+
+                var orderDetail = OrderDetails.FirstOrDefault(x => x.ProductID == Product.ProductID);
+
+                await RemoveFromCart.InvokeAsync(orderDetail);
+            }
+            else
+            {
+                NavigationManager.NavigateTo("/Identity/Account/Login", true);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error");
+        }
+    }
+
+    public void ChangeImages()
+    {
+        try
+        {
+            slides = 0;
+
+            images = new List<ProductImage>();
+            slidesActiveStyle = new List<string>();
+            dotsActiveClass = new List<string>();
+
+            if (Product != null && Product.MainPicture != null)
+            {
+                images.Add(new ProductImage() { Image = ParseToImage(Product.MainPicture) });
+                slidesActiveStyle.Add("display:none;");
+                dotsActiveClass.Add("");
+            }
+
+            if (Product != null && ProductDetails != null)
+            {
+                foreach (var productDetail in ProductDetails)
+                {
+                    if (productDetail.Picture != null)
+                    {
+                        images.Add(new ProductImage()
+                        {
+                            Image = ParseToImage(productDetail.Picture),
+                            Color = productDetail.Color,
+                            Material = productDetail.Material
+                        });
+                        slidesActiveStyle.Add("display:none;");
+                        dotsActiveClass.Add("");
+                    }
+                }
+            }
+
+            slides = images.Count;
+            if (slides > 0)
+            {
+                ShowSlide(slideIndex);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error");
+        }
+
+    }
+    public void ChangeStars()
+    {
+        try
+        {
+            if (Product != null && Product.Reviews != null && Product.Reviews.Count > 0)
+                starsAverage = Product.Reviews.Average(s => s.Stars);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error");
+        }
+
+    }
+
+    string dataModalOpenClass => ModalIsClicked ? "show" : null;
+
+
+
+
+    public void PlusSlide(int n)
+    {
+        try
+        {
+            slideIndex += n;
+
+            if (slideIndex > slides) slideIndex = 1;
+            if (slideIndex < 1) slideIndex = slides;
+
+            ShowSlide(slideIndex);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error");
+        }
+
+    }
+
+    public void CurrentSlide(int n)
+    {
+        ShowSlide(slideIndex = n);
+    }
+
+    public void ShowSlide(int n)
+    {
+        try
+        {
+            for (int i = 0; i < slides; i++)
+            {
+                slidesActiveStyle[i] = "display:none;";
+                dotsActiveClass[i] = "";
+            }
+
+            slidesActiveStyle[slideIndex - 1] = "display:block;";
+            dotsActiveClass[slideIndex - 1] = " active";
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error");
+        }
+
+    }
+
+
+
+    public string ParseToImage(byte[] byteImage)
+    {
+        try
+        {
+            string base64 = Convert.ToBase64String(byteImage);
+            string imgSrc = String.Format("data:image/gif;base64,{0}", base64);
+
+            return imgSrc;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error");
+            return "";
+        }
+
+    }
+
+    public class ProductImage
+    {
+        public string Image { get; set; }
+        public string Color { get; set; }
+        public string Material { get; set; }
+    };
+}

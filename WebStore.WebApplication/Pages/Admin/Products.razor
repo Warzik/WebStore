@@ -1,0 +1,1354 @@
+﻿@page "/admin/products"
+@inject IJSRuntime JSRuntime;
+@inject IProductService _productService;
+@inject ISupplierService _supplierService;
+@inject ICategoryService _categoryService;
+@inject IReviewService _reviewService;
+@inject IProductDetailService _productDetailService;
+@inject IMapper _mapper;
+@attribute [Authorize(Roles = "Administrator")]
+@inject ILogger<Products> Logger
+
+<div class="container-fluid margin-top admin-style">
+    <MainPageTitle Title="Products" />
+
+    <Breadcrumb Items="BreadcrumbItems" />
+
+    <div class="container">
+
+
+
+        @if (products == null)
+        {
+            <div class="d-flex justify-content-center">
+
+                <div class="small-lds-ellipsis"><div></div><div></div><div></div><div></div></div>
+
+            </div>
+
+        }
+        else
+        {
+
+            <div class="row ">
+
+                <div class="mb-4  col-sm-6 col-md-4 ">
+                    <button class="btn btn-outline-primary w-100" @onclick="OnAddClick"> ADD PRODUCT</button>
+                </div>
+
+                <div class="mb-4  col-sm-6 col-md-4">
+                    <button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" @onclick="ToggleSearchDropdown"><span class="d-none d-lg-inline-block">Choose operation field:</span> @searchBy</button>
+                    <div class="dropdown-menu @searchDropdownMenuShowClass">
+                        @foreach (var parameter in copyParameters)
+                        {
+                            <div class="dropdown-item" @onclick="(() => ChangeSearchBy(parameter))"> @parameter</div>
+                        }
+
+                    </div>
+                </div>
+
+
+                <div class="col-sm-6 col-md-4 mb-4">
+                    <button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" @onclick="ToggleOrderDropdown"><span class="d-none d-lg-inline-block">Choose order:</span> @orderType</button>
+                    <div class="dropdown-menu @orderDropdownMenuShowClass">
+                        <div class="dropdown-item" @onclick='(() => ChangeOderType("Ascending Order"))'> Ascending Order</div>
+                        <div class="dropdown-item" @onclick='(() => ChangeOderType("Descending Order"))'> Descending Order</div>
+                    </div>
+                </div>
+
+
+                <div class="mb-4 col-sm-6 col-md-4">
+                    <button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" @onclick="ToggleProductsPerPageDropdown">Product per page: @productsPerPage</button>
+                    <div class="dropdown-menu @productsPerPageDropdownMenuShowClass">
+                        <div class="dropdown-item" @onclick='(() => ChangeProductsPerPage(10))'> 10</div>
+                        <div class="dropdown-item" @onclick='(() => ChangeProductsPerPage(20))'> 20</div>
+                        <div class="dropdown-item" @onclick='(() => ChangeProductsPerPage(50))'> 50</div>
+                        <div class="dropdown-item" @onclick='(() => ChangeProductsPerPage(100))'> 100</div>
+                        <form @onsubmit='(() => ChangeProductsPerPage(int.TryParse(inputProductsPerPage, out int n)==true? n: productsPerPage))'>
+                            <input class="form-control" placeholder="Type and press enter " @bind="inputProductsPerPage" @bind:event="oninput" />
+                        </form>
+                    </div>
+                </div>
+                <div class="col-sm-6 mb-4  col-md-4 ">
+                    <div class="input-group">
+                        <div class="input-group-prepend">
+                            <div class="input-group-text">
+                                <i class="fas fa-search"></i>
+                            </div>
+                        </div>
+                        <input type="text" placeholder="Type to search" class="form-control" @bind="searchQuery" @bind:event="oninput" @onkeyup="@HandleKeyUp" />
+                    </div>
+
+                </div>
+                <div class="col-sm-6 col-md-4 col-lg-3 mb-4">
+                    <div class="data-card-pagination">
+                        <div class="row">
+                            @if (currentPage != 1)
+                            {
+                                <div class="col-2 arrow" @onclick="() => ChangeCurrentPage(currentPage - 1)">
+                                    <i class="fas fa-chevron-left"></i>
+                                </div>
+                            }
+                            else
+                            {<div class="col-2">
+                                </div>
+                            }
+                            <div class="col-4">
+                                <form @onsubmit='(() => ChangeCurrentPage(int.TryParse(inputCurrentPage, out int n)==true? n: currentPage))'>
+                                    <input class="form-control w-100" @bind="inputCurrentPage" @bind:event="oninput" />
+                                </form>
+                            </div>
+                            <div class="col-2 from-style">
+                                <span>from</span>
+                            </div>
+                            <div class="col-2">
+
+                                <span>@totalPages</span>
+                            </div>
+                            @if (currentPage != totalPages)
+                            {
+                                <div class="col-2 arrow" @onclick="()=>ChangeCurrentPage(currentPage+1)">
+                                    <i class="fas fa-chevron-right"></i>
+                                </div>
+                            }
+                            else
+                            {<div class="col-2">
+                                </div>
+                            }
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+            if (IsSearching)
+            {
+                <div class="d-flex justify-content-center">
+
+                    <div class="small-lds-ellipsis"><div></div><div></div><div></div><div></div></div>
+
+                </div>
+            }
+            else
+            {
+                <div class="row">
+                    @foreach (var product in products)
+                    {
+                        var subTitle = GetPropValue(product, searchBy).ToString();
+                        <div class="col-sm-6 col-md-4 mb-3">
+                            <ProductDataCard TItem="IProductBLL"
+                                             Title="@product.ProductName"
+                                             SubTitle="@subTitle"
+                                             Color="ProductDataCard<IProductBLL>.Colors.orange"
+                                             ItemData="product"
+                                             OnEditClick="OnEditClick"
+                                             OnDeleteClick="OnDeleteClick"
+                                             OnReviewClick="OnReviewClick"
+                                             OnDetailClick="OnDetailClick">
+                                <i class="fas fa-user"></i>
+                            </ProductDataCard>
+                        </div>
+                    }
+
+                    @if (products.Count == 0)
+                    {
+                        <p>No results.</p>
+                    }
+
+
+                </div>
+            }
+            <div class="d-flex justify-content-center mt-4">
+                <div class="data-card-pagination">
+                    <div class="row">
+                        @if (currentPage > 1)
+                        {
+                            <div class="col-2 arrow " @onclick="() => ChangeCurrentPage(currentPage - 1)">
+                                <i class="fas fa-chevron-left"></i>
+                            </div>
+                        }
+                        else
+                        {<div class="col-2">
+                            </div>
+                        }
+                        <div class="col-4">
+                            <form @onsubmit='(() => ChangeCurrentPage(int.TryParse(inputCurrentPage, out int n)==true? n: currentPage))'>
+                                <input class="form-control w-100" @bind="inputCurrentPage" @bind:event="oninput" />
+                            </form>
+                        </div>
+                        <div class="col-2 from-style">
+                            <span>from</span>
+                        </div>
+                        <div class="col-2">
+                            <span>@totalPages</span>
+                        </div>
+                        @if (currentPage != totalPages)
+                        {
+                            <div class="col-2 arrow" @onclick="()=>ChangeCurrentPage(currentPage+1)">
+                                <i class="fas fa-chevron-right"></i>
+                            </div>
+                        }
+                        else
+                        {<div class="col-2">
+                            </div>
+                        }
+
+                    </div>
+                </div>
+            </div>
+        }
+
+
+    </div>
+
+    <DataModal Title="Edit Product" DataModalIsClicked="editModalIsClicked" MaxWigth="800px">
+
+        @if (currentProduct != null)
+        {
+            <EditForm class="container" Model="@currentProduct" OnValidSubmit="@EditCurentProduct">
+                <div class="data-modal-body row mb-4">
+                    <DataAnnotationsValidator />
+                    <div class="form-group col-md-6">
+                        <label for="ProductID" class="control-label">ProductID: </label>
+                        <InputNumber id="ProductID" @bind-Value="currentProduct.ProductID" disabled class="form-control" />
+                        <ValidationMessage For="@(() => currentProduct.ProductID)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="SupplierID">SupplierID: </label>
+                        <InputSelect id="SupplierID" @bind-Value="@supplierID" class="form-control">
+                            <option value="">Select Supplier...</option>
+                            @foreach (var supplier in suppliers)
+                                {
+                                <option value="@supplier.SupplierID.ToString()">@supplier.CompanyName </option>
+                                }
+                            /**/
+                            /**/
+                            /**/
+
+                        </InputSelect>
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="CategoryID">CategoryID: </label>
+                        <InputSelect id="CategoryID" @bind-Value="@categoryID" class="form-control">
+                            <option value="">Select Category...</option>
+                            @foreach (var category in categories)
+                                {
+                                <option value="@category.CategoryID.ToString()">@category.CategoryName </option>
+                                }
+                            /**/
+                            /**/
+                            /**/
+
+                        </InputSelect>
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="UPC" class="control-label">UPC: </label>
+                        <InputText id="UPC" @bind-Value="currentProduct.UPC" class="form-control" />
+                        <ValidationMessage For="@(() => currentProduct.UPC)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="ProductName" class="control-label">ProductName: </label>
+                        <InputText id="ProductName" @bind-Value="currentProduct.ProductName" class="form-control" />
+                        <ValidationMessage For="@(() => currentProduct.ProductName)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="ProductFirm" class="control-label">ProductFirm: </label>
+                        <InputText id="ProductFirm" @bind-Value="currentProduct.ProductFirm" class="form-control" />
+                        <ValidationMessage For="@(() => currentProduct.ProductFirm)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="Discount" class="control-label">Discount </label>
+                        <InputNumber id="Discount" @bind-Value="currentProduct.Discount" class="form-control" />
+                        <ValidationMessage For="@(() => currentProduct.Discount)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="ProductDescription" class="control-label">ProductDescription: </label>
+                        <InputText id="ProductDescription" @bind-Value="currentProduct.ProductDescription" class="form-control" />
+                        <ValidationMessage For="@(() => currentProduct.ProductDescription)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="QuantityPerUnit" class="control-label">QuantityPerUnit: </label>
+                        <InputNumber id="QuantityPerUnit" @bind-Value="currentProduct.QuantityPerUnit" class="form-control" />
+                        <ValidationMessage For="@(() => currentProduct.QuantityPerUnit)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="UnitPrice" class="control-label">UnitPrice: </label>
+                        <InputNumber id="UnitPrice" @bind-Value="currentProduct.UnitPrice" class="form-control" />
+                        <ValidationMessage For="@(() => currentProduct.UnitPrice)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="UnitsInStock" class="control-label">UnitsInStock: </label>
+                        <InputNumber id="UnitsInStock" @bind-Value="currentProduct.UnitsInStock" class="form-control" />
+                        <ValidationMessage For="@(() => currentProduct.UnitsInStock)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="UnitsOnOrder" class="control-label">UnitsOnOrder: </label>
+                        <InputNumber id="UnitsOnOrder" @bind-Value="currentProduct.UnitsOnOrder" class="form-control" />
+                        <ValidationMessage For="@(() => currentProduct.UnitsOnOrder)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="ReorderLevel" class="control-label">ReorderLevel: </label>
+                        <InputNumber id="ReorderLevel" @bind-Value="currentProduct.ReorderLevel" class="form-control" />
+                        <ValidationMessage For="@(() => currentProduct.ReorderLevel)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="Note" class="control-label">Note: </label>
+                        <InputText id="Note" @bind-Value="currentProduct.Note" class="form-control" />
+                        <ValidationMessage For="@(() => currentProduct.Note)" />
+                    </div>
+
+                    <div class="form-group col-md-6">
+                        @if (currentProduct.MainPicture != null)
+                        {
+                            <img src="@(ParseToImage(currentProduct.MainPicture))" class="w-100" />
+                        }
+                        <InputFile OnChange="HandleFileSelectedForProduct" accept="image/x-png,image/gif,image/jpeg" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="ProductAvailable" class="control-label">ProductAvailable: </label>
+                        <InputCheckbox id="ProductAvailable" @bind-Value="currentProduct.ProductAvailable" class="form-control" />
+                        <ValidationMessage For="@(() => currentProduct.ProductAvailable)" />
+                    </div>
+                </div>
+                <div class="data-modal-footer">
+                    <button type="submit" class="btn btn-primary mr-3">Save Changes</button>
+                    <button type="button" class="btn btn-secondary" @onclick="CloseEditModal">Close</button>
+                </div>
+
+            </EditForm>
+        }
+    </DataModal>
+
+    <DataModal Title="Add Product" DataModalIsClicked="addModalIsClicked" MaxWigth="800px">
+
+        @if (currentProduct != null)
+        {
+            <EditForm class="container" Model="@currentProduct" OnValidSubmit="@AddCurentProduct">
+                <div class="data-modal-body row mb-4">
+                    <DataAnnotationsValidator />
+                    <div class="form-group col-md-6">
+                        <label for="ProductID" class="control-label">ProductID: </label>
+                        <InputNumber id="ProductID" @bind-Value="currentProduct.ProductID" disabled class="form-control" />
+                        <ValidationMessage For="@(() => currentProduct.ProductID)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="SupplierID">SupplierID: </label>
+                        <InputSelect id="SupplierID" @bind-Value="@supplierID" class="form-control">
+                            <option value="">Select Supplier...</option>
+                            @foreach (var supplier in suppliers)
+                                {
+                                <option value="@supplier.SupplierID.ToString()">@supplier.CompanyName </option>
+                                }
+                            /**/
+                            /**/
+                            /**/
+
+                        </InputSelect>
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="CategoryID">CategoryID: </label>
+                        <InputSelect id="CategoryID" @bind-Value="@categoryID" class="form-control">
+                            <option value="">Select Category...</option>
+                            @foreach (var category in categories)
+                                {
+                                <option value="@category.CategoryID.ToString()">@category.CategoryName </option>
+                                }
+                            /**/
+                            /**/
+                            /**/
+
+                        </InputSelect>
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="UPC" class="control-label">UPC: </label>
+                        <InputText id="UPC" @bind-Value="currentProduct.UPC" class="form-control" />
+                        <ValidationMessage For="@(() => currentProduct.UPC)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="ProductName" class="control-label">ProductName: </label>
+                        <InputText id="ProductName" @bind-Value="currentProduct.ProductName" class="form-control" />
+                        <ValidationMessage For="@(() => currentProduct.ProductName)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="ProductFirm" class="control-label">ProductFirm: </label>
+                        <InputText id="ProductFirm" @bind-Value="currentProduct.ProductFirm" class="form-control" />
+                        <ValidationMessage For="@(() => currentProduct.ProductFirm)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="Discount" class="control-label">Discount </label>
+                        <InputNumber id="Discount" @bind-Value="currentProduct.Discount" class="form-control" />
+                        <ValidationMessage For="@(() => currentProduct.Discount)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="ProductDescription" class="control-label">ProductDescription: </label>
+                        <InputText id="ProductDescription" @bind-Value="currentProduct.ProductDescription" class="form-control" />
+                        <ValidationMessage For="@(() => currentProduct.ProductDescription)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="QuantityPerUnit" class="control-label">QuantityPerUnit: </label>
+                        <InputNumber id="QuantityPerUnit" @bind-Value="currentProduct.QuantityPerUnit" class="form-control" />
+                        <ValidationMessage For="@(() => currentProduct.QuantityPerUnit)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="UnitPrice" class="control-label">UnitPrice: </label>
+                        <InputNumber id="UnitPrice" @bind-Value="currentProduct.UnitPrice" class="form-control" />
+                        <ValidationMessage For="@(() => currentProduct.UnitPrice)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="UnitsInStock" class="control-label">UnitsInStock: </label>
+                        <InputNumber id="UnitsInStock" @bind-Value="currentProduct.UnitsInStock" class="form-control" />
+                        <ValidationMessage For="@(() => currentProduct.UnitsInStock)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="UnitsOnOrder" class="control-label">UnitsOnOrder: </label>
+                        <InputNumber id="UnitsOnOrder" @bind-Value="currentProduct.UnitsOnOrder" class="form-control" />
+                        <ValidationMessage For="@(() => currentProduct.UnitsOnOrder)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="ReorderLevel" class="control-label">ReorderLevel: </label>
+                        <InputNumber id="ReorderLevel" @bind-Value="currentProduct.ReorderLevel" class="form-control" />
+                        <ValidationMessage For="@(() => currentProduct.ReorderLevel)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="Note" class="control-label">Note: </label>
+                        <InputText id="Note" @bind-Value="currentProduct.Note" class="form-control" />
+                        <ValidationMessage For="@(() => currentProduct.Note)" />
+                    </div>
+
+                    <div class="form-group col-md-6">
+                        @if (currentProduct.MainPicture != null)
+                        {
+                            <img src="@(ParseToImage(currentProduct.MainPicture))" class="w-100" />
+                        }
+
+                        <InputFile OnChange="HandleFileSelectedForProduct" accept="image/x-png,image/gif,image/jpeg" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="ProductAvailable" class="control-label">ProductAvailable: </label>
+                        <InputCheckbox id="ProductAvailable" @bind-Value="currentProduct.ProductAvailable" class="form-control" />
+                        <ValidationMessage For="@(() => currentProduct.ProductAvailable)" />
+                    </div>
+                </div>
+                <div class="data-modal-footer">
+                    <button type="submit" class="btn btn-primary mr-3">Save </button>
+                    <button type="button" class="btn btn-secondary" @onclick="CloseAddModal">Close</button>
+                </div>
+
+            </EditForm>
+        }
+    </DataModal>
+
+
+    <DataModal Title="Reviews" DataModalIsClicked="reviewModalIsClicked" MaxWigth="800px">
+
+        @if (reviews.Count > 0)
+        {
+            <EditForm class="container" Model="@reviews">
+                <div class="data-modal-body row mb-4">
+
+                    @foreach (var review in reviews)
+                    {<div class="row">
+                            <div class="form-group col-md-6">
+                                <label for="ReviewID" class="control-label">ReviewID: </label>
+                                <InputNumber id="ReviewID" @bind-Value="review.ReviewID" disabled class="form-control" />
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label for="WritingDate" class="control-label">WritingDate: </label>
+                                <InputDate id="WritingDate" @bind-Value="review.WritingDate" disabled class="form-control" />
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label for="Stars" class="control-label">Stars: </label>
+                                <InputNumber id="Stars" @bind-Value="review.Stars" disabled class="form-control" />
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label for="Email" class="control-label">Email: </label>
+                                <InputText id="Email" @bind-Value="review.Email" disabled class="form-control" />
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label for="Advantages" class="control-label">Advantages: </label>
+                                <InputTextArea id="Advantages" @bind-Value="review.Advantages" disabled class="form-control" />
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label for="Disadvantages" class="control-label">Disadvantages: </label>
+                                <InputTextArea id="Disadvantages" @bind-Value="review.Disadvantages" disabled class="form-control" />
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label for="Comment" class="control-label">Comment: </label>
+                                <InputTextArea id="Comment" @bind-Value="review.Comment" disabled class="form-control" />
+                            </div>
+                            <div class="form-group col-md-6">
+                                <button type="button" class="btn btn-danger" @onclick="() => DeleteReview(review)">Delete</button>
+                            </div>
+                        </div>
+                    }
+
+                </div>
+                <div class="data-modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="CloseReviewModal">Close</button>
+                </div>
+            </EditForm>
+        }
+        else
+        {<div class="p-3">
+                No reviews.
+            </div>
+            <div class="data-modal-footer">
+                <button type="button" class="btn btn-secondary" @onclick="CloseReviewModal">Close</button>
+            </div>}
+
+    </DataModal>
+
+    <DataModal Title="Product Details" DataModalIsClicked="detailModalIsClicked" MaxWigth="800px">
+
+
+        <EditForm class="container" Model="@productDetails">
+            <div class="data-modal-body mb-4">
+                @if (productDetails.Count > 0)
+                {
+                    @foreach (var detail in productDetails)
+                    {
+                        <div class="row">
+                            <div class="form-group col-md-6">
+                                <label for="ProductDetailID" class="control-label">ProductDetailID: </label>
+                                <InputNumber id="ProductDetailID" @bind-Value="detail.ProductDetailID" disabled class="form-control" />
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label for="Color" class="control-label">Color: </label>
+                                <InputText id="Color" @bind-Value="detail.Color" disabled class="form-control" />
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label for="Size" class="control-label">Size: </label>
+                                <InputText id="Size" @bind-Value="detail.Size" disabled class="form-control" />
+                            </div>
+                            <div class="form-group col-md-6">
+                                <label for="Material" class="control-label">Material: </label>
+                                <InputText id="Material" @bind-Value="detail.Material" disabled class="form-control" />
+                            </div>
+                            <div class="form-group col-md-6">
+                                @if (detail.Picture != null)
+                                {
+                                    <img src="@(ParseToImage(detail.Picture))" class="w-100" />
+                                }
+
+                                @*<InputFile OnChange="HandleFileSelected" accept="image/x-png,image/gif,image/jpeg" />*@
+                            </div>
+                            <div class="form-group col-md-6">
+                            </div>
+                            <div class="form-group col-md-6">
+                                <button type="button" class="btn btn-danger" @onclick="() => DeleteDetail(detail)">Delete</button>
+                            </div>
+                        </div>
+                    }
+                }
+                else
+                {
+                    <h4 class="p-3">
+                        No saved product details.
+                    </h4>
+                }
+
+                @foreach (var detail in emptyProductDetails)
+                {
+                    <h5 class="p-3">
+                        New product detail:
+                    </h5>
+                    <div class="row">
+                        <div class="form-group col-md-6">
+                            <label for="ProductDetailID" class="control-label">ProductDetailID: </label>
+                            <InputNumber id="ProductDetailID" @bind-Value="detail.ProductDetailID" disabled class="form-control" />
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label for="Color" class="control-label">Color: </label>
+                            <InputText id="Color" @bind-Value="detail.Color" class="form-control" />
+                            <ValidationMessage For="@(() => detail.Color)" />
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label for="Size" class="control-label">Size: </label>
+                            <InputText id="Size" @bind-Value="detail.Size" class="form-control" />
+                            <ValidationMessage For="@(() => detail.Size)" />
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label for="Material" class="control-label">Material: </label>
+                            <InputText id="Material" @bind-Value="detail.Material" class="form-control" />
+                            <ValidationMessage For="@(() => detail.Material)" />
+                        </div>
+                        <div class="form-group col-md-6">
+                            @if (detail.Picture != null)
+                            {
+                                <img src="@(ParseToImage(detail.Picture))" class="w-100" />
+                            }
+
+                            <InputFile @onclick="(() => currentProductDetail=detail)" OnChange="HandleFileSelected" accept="image/x-png,image/gif,image/jpeg" />
+                        </div>
+                    </div>
+
+                }
+            </div>
+            <div class="data-modal-footer">
+                <button type="button" class="btn btn-primary mr-5" @onclick="AddEmptyDetail"> Add Product Detail</button>
+                <button type="button" class="btn btn-primary mr-3" @onclick="SaveEmptyDetail"> Save Added Detail</button>
+                <button type="button" class="btn btn-secondary" @onclick="CloseDetailModal">Close</button>
+            </div>
+        </EditForm>
+
+
+    </DataModal>
+
+
+
+    <DataModal Title="Delete Product" DataModalIsClicked="deleteModalIsClicked" MaxWigth="400px">
+        <div class="p-3">
+            You are sure you want to delete?
+        </div>
+        <div class="data-modal-footer">
+            <button type="button" class="btn btn-danger mr-3" @onclick="DeleteCurentProduct"> Yes</button>
+            <button type="button" class="btn btn-secondary" @onclick="CloseDeleteModal">No</button>
+        </div>
+
+    </DataModal>
+
+
+</div>
+
+
+
+
+
+
+
+@code {
+    string[] BreadcrumbItems = new string[] { "Home", "Admin", "Products" };
+
+    bool serchDropdownMenuIsClicked = false;
+    bool orderDropdownMenuIsClicked = false;
+    bool productsPerPageDropdownMenuIsClicked = false;
+    bool editModalIsClicked = false;
+    bool addModalIsClicked = false;
+    bool deleteModalIsClicked = false;
+    bool reviewModalIsClicked = false;
+    bool detailModalIsClicked = false;
+
+    string productsPerPageDropdownMenuShowClass => productsPerPageDropdownMenuIsClicked ? "show" : null;
+    string searchDropdownMenuShowClass => serchDropdownMenuIsClicked ? "show" : null;
+    string orderDropdownMenuShowClass => orderDropdownMenuIsClicked ? "show" : null;
+
+    int productsPerPage;
+    int lastProductsPerPage;
+    string inputProductsPerPage;
+
+    string searchBy;
+
+    string orderType;
+
+    string searchQuery = "";
+    string lastSearchQuery = "";
+
+    string inputCurrentPage;
+    int currentPage;
+    int totalPages;
+
+    List<string> copyParameters;
+    bool IsSearching = false;
+    CancellationTokenSource cancelToken = new CancellationTokenSource();
+
+    private System.Timers.Timer inputTimer;
+
+    List<IProductBLL> products = null;
+    List<IProductBLL> storedProducts = null;
+
+    Product currentProduct;
+
+    IProductDetailBLL currentProductDetail;
+
+    string supplierID;
+    string categoryID;
+
+    List<ICategoryBLL> categories;
+    List<ISupplierBLL> suppliers;
+
+
+    List<IProductDetailBLL> productDetails = new List<IProductDetailBLL>();
+    List<IProductDetailBLL> emptyProductDetails = new List<IProductDetailBLL>();
+    List<IReviewBLL> reviews = new List<IReviewBLL>();
+
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            orderType = "Ascending Order";
+            productsPerPage = 10;
+
+
+            categories = (await _categoryService.GetAllAsync()).ToList();
+            suppliers = (await _supplierService.GetAllAsync()).ToList();
+
+            storedProducts = (await _productService.GetProductsAsync()).ToList();
+            products = storedProducts.Take(productsPerPage).OrderBy(x => x.ProductID).ToList();
+
+            copyParameters = typeof(Product).GetProperties().Select(p => p.Name).Take(15).ToList();
+
+            searchBy = copyParameters[0];
+
+
+            currentPage = 1;
+            inputCurrentPage = "1";
+            totalPages = storedProducts.Count() / productsPerPage;
+            if ((storedProducts.Count() - (totalPages * productsPerPage)) != 0)
+                totalPages++;
+
+            if (totalPages == 0) totalPages = 1;
+
+            inputTimer = new System.Timers.Timer(500);
+            inputTimer.Elapsed += OnUserFinish;
+            inputTimer.AutoReset = false;
+        }
+       catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+    }
+
+    public void AddEmptyDetail()
+    {
+        try
+        {
+            emptyProductDetails.Add(new ProductDetailBLL() { ProductID = currentProduct.ProductID });
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+    }
+
+    public void SaveEmptyDetail()
+    {
+        try
+        {
+            if (emptyProductDetails.Count > 0)
+            {
+                _productDetailService.AddMany(emptyProductDetails);
+            }
+
+            detailModalIsClicked = !detailModalIsClicked;
+
+            JSRuntime.InvokeVoidAsync("Body.Overflow", true);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+    }
+
+
+    public async void OnDetailClick(IProductBLL product)
+    {
+        try
+        {
+            currentProduct = _mapper.Map<Product>(product);
+            detailModalIsClicked = !detailModalIsClicked;
+
+
+            emptyProductDetails = new List<IProductDetailBLL>();
+            productDetails = (await _productDetailService.GetProductDetailsByProductIDAsync(product.ProductID)).ToList();
+
+            StateHasChanged();
+
+            await JSRuntime.InvokeVoidAsync("Body.Overflow", !detailModalIsClicked);
+
+        }
+       catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+    }
+    public async void DeleteDetail(IProductDetailBLL productDetail)
+    {
+        try
+        {
+            await _productDetailService.Delete(productDetail.ProductDetailID);
+
+            productDetails.RemoveAll(x => x.ProductDetailID == productDetail.ProductDetailID);
+
+            StateHasChanged();
+
+        }
+       catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+    }
+
+    public void CloseDetailModal()
+    {
+        try
+        {
+            detailModalIsClicked = !detailModalIsClicked;
+
+            JSRuntime.InvokeVoidAsync("Body.Overflow", true);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+
+    }
+
+
+    public async void OnReviewClick(IProductBLL product)
+    {
+        try
+        {
+            currentProduct = _mapper.Map<Product>(product);
+            reviewModalIsClicked = !reviewModalIsClicked;
+
+            reviews = (await _reviewService.GetReviewsByProductIDAsync(product.ProductID)).ToList();
+
+            await JSRuntime.InvokeVoidAsync("Body.Overflow", !reviewModalIsClicked);
+            StateHasChanged();
+
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+    }
+
+    public async void DeleteReview(IReviewBLL review)
+    {
+        try
+        {
+            await _reviewService.Delete(review.ReviewID);
+            reviews.RemoveAll(x => x.ReviewID == review.ReviewID);
+            StateHasChanged();
+
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+    }
+
+    public void CloseReviewModal()
+    {
+        try
+        {
+            reviewModalIsClicked = !reviewModalIsClicked;
+
+            JSRuntime.InvokeVoidAsync("Body.Overflow", true);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+
+    }
+
+    public async void OnEditClick(IProductBLL product)
+    {
+        try
+        {
+            currentProduct = _mapper.Map<Product>(product);
+            editModalIsClicked = !editModalIsClicked;
+
+            supplierID = currentProduct.SupplierID;
+            categoryID = currentProduct.CategoryID?.ToString();
+
+
+
+            await JSRuntime.InvokeVoidAsync("Body.Overflow", !editModalIsClicked);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+
+    }
+
+    public async void EditCurentProduct()
+    {
+        try
+        {
+            if (!string.IsNullOrWhiteSpace(supplierID)) currentProduct.SupplierID = supplierID;
+            else currentProduct.SupplierID = null;
+            if (!string.IsNullOrWhiteSpace(categoryID)) currentProduct.CategoryID = int.Parse(categoryID);
+            else currentProduct.CategoryID = null;
+
+            editModalIsClicked = false;
+            _productService.Update(_mapper.Map<IProductBLL>(currentProduct));
+            storedProducts = (await _productService.GetProductsAsync()).ToList();
+            HandleKeyUp();
+            await JSRuntime.InvokeVoidAsync("Body.Overflow", true);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+    }
+
+    public void CloseEditModal()
+    {
+        try
+        {
+            editModalIsClicked = !editModalIsClicked;
+
+            JSRuntime.InvokeVoidAsync("Body.Overflow", true);
+        }
+       catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+
+    }
+
+    public void OnAddClick()
+    {
+        try
+        {
+            currentProduct = new Product();
+
+            addModalIsClicked = !addModalIsClicked;
+
+            supplierID = currentProduct.SupplierID;
+            categoryID = currentProduct.CategoryID?.ToString();
+
+
+            productDetails = new List<IProductDetailBLL>();
+            reviews = new List<IReviewBLL>();
+
+
+            JSRuntime.InvokeVoidAsync("Body.Overflow", !addModalIsClicked);
+
+        }
+      catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+    }
+
+    public void CloseAddModal()
+    {
+        try
+        {
+            addModalIsClicked = !addModalIsClicked;
+
+            JSRuntime.InvokeVoidAsync("Body.Overflow", true);
+        }
+       catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+
+    }
+
+    public async void AddCurentProduct()
+    {
+        try
+        {
+            if (!string.IsNullOrWhiteSpace(supplierID)) currentProduct.SupplierID = supplierID;
+            else currentProduct.SupplierID = null;
+            if (!string.IsNullOrWhiteSpace(categoryID)) currentProduct.CategoryID = int.Parse(categoryID);
+            else currentProduct.CategoryID = null;
+
+
+            _productService.Add(_mapper.Map<IProductBLL>(currentProduct));
+            addModalIsClicked = false;
+            storedProducts = (await _productService.GetProductsAsync()).ToList();
+            HandleKeyUp();
+            await JSRuntime.InvokeVoidAsync("Body.Overflow", true);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+    }
+
+    public void OnDeleteClick(IProductBLL product)
+    {
+        try
+        {
+            currentProduct = _mapper.Map<Product>(product);
+            deleteModalIsClicked = !deleteModalIsClicked;
+
+            supplierID = currentProduct.SupplierID;
+            categoryID = currentProduct.CategoryID?.ToString();
+
+            JSRuntime.InvokeVoidAsync("Body.Overflow", !deleteModalIsClicked);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+    }
+    public async void DeleteCurentProduct()
+    {
+        try
+        {
+            await _productService.Delete(currentProduct.ProductID);
+            deleteModalIsClicked = false;
+            storedProducts = (await _productService.GetProductsAsync()).ToList();
+            HandleKeyUp();
+            await JSRuntime.InvokeVoidAsync("Body.Overflow", true);
+
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+    }
+
+    public void CloseDeleteModal()
+    {
+        try
+        {
+            deleteModalIsClicked = !deleteModalIsClicked;
+
+            JSRuntime.InvokeVoidAsync("Body.Overflow", true);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+
+    }
+
+    public void ToggleSearchDropdown()
+    {
+        serchDropdownMenuIsClicked = !serchDropdownMenuIsClicked;
+        orderDropdownMenuIsClicked = false;
+        productsPerPageDropdownMenuIsClicked = false;
+    }
+
+    public void ToggleOrderDropdown()
+    {
+        orderDropdownMenuIsClicked = !orderDropdownMenuIsClicked;
+        serchDropdownMenuIsClicked = false;
+        productsPerPageDropdownMenuIsClicked = false;
+    }
+
+    public void ToggleProductsPerPageDropdown()
+    {
+        productsPerPageDropdownMenuIsClicked = !productsPerPageDropdownMenuIsClicked;
+        orderDropdownMenuIsClicked = false;
+        serchDropdownMenuIsClicked = false;
+    }
+
+    public void ChangeCurrentPage(int page)
+    {
+        try
+        {
+            if (page >= totalPages)
+            {
+                currentPage = totalPages;
+                inputCurrentPage = currentPage.ToString();
+                HandleKeyUp();
+
+                return;
+            }
+
+            if (page <= 0)
+            {
+                currentPage = 1;
+                inputCurrentPage = currentPage.ToString();
+                HandleKeyUp();
+                return;
+            }
+
+            if (currentPage != page)
+            {
+                currentPage = page;
+                inputCurrentPage = currentPage.ToString();
+                HandleKeyUp();
+                return;
+            }
+        }
+       catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+    }
+
+    public void ChangeProductsPerPage(int productOnPage)
+    {
+        try
+        {
+            if (productsPerPage == productOnPage || productOnPage > 200) { ToggleProductsPerPageDropdown(); }
+            else
+            {
+                productsPerPage = productOnPage;
+                currentPage = 1;
+                inputCurrentPage = "1";
+                ToggleProductsPerPageDropdown();
+                HandleKeyUp();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+
+    }
+
+    public void ChangeOderType(string order)
+    {
+        try
+        {
+            if (orderType == order) { ToggleOrderDropdown(); }
+            else
+            {
+                orderType = order;
+                ToggleOrderDropdown();
+                HandleKeyUp();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+    }
+
+    public void ChangeSearchBy(string changedSearchBy)
+    {
+        try
+        {
+            if (searchBy == changedSearchBy) { ToggleSearchDropdown(); }
+            else
+            {
+                searchBy = changedSearchBy;
+                HandleKeyUp();
+                ToggleSearchDropdown();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+    }
+    public object GetPropValue(object src, string propName)
+    {
+
+        PropertyInfo propertyInfo = src.GetType().GetProperty(propName);
+
+        if (propertyInfo.PropertyType == typeof(DateTime))
+        {
+            object value = propertyInfo.GetValue(src, null);
+
+            return value;
+        }
+
+        if (propertyInfo.PropertyType == typeof(int))
+        {
+            object value = propertyInfo.GetValue(src, null);
+
+            return value == null ? 0 : value;
+        }
+
+        if (propertyInfo.PropertyType == typeof(int?))
+        {
+            object value = propertyInfo.GetValue(src, null);
+
+            return value == null ? 0 : value;
+        }
+
+        if (propertyInfo.PropertyType == typeof(double))
+        {
+            object value = propertyInfo.GetValue(src, null);
+
+            return value == null ? 0 : value;
+        }
+
+        if (propertyInfo.PropertyType == typeof(bool))
+        {
+            object value = propertyInfo.GetValue(src, null);
+
+            return value == null ? false : value;
+        }
+
+        if (propertyInfo.PropertyType == typeof(decimal))
+        {
+            object value = propertyInfo.GetValue(src, null);
+
+            return value == null ? 0 : value;
+        }
+
+        if (propertyInfo.PropertyType == typeof(float))
+        {
+            object value = propertyInfo.GetValue(src, null);
+
+            return value == null ? 0 : value;
+        }
+
+        if (propertyInfo.PropertyType == typeof(string))
+        {
+            object value = propertyInfo.GetValue(src, null);
+
+            return value == null ? "Null" : value;
+        }
+
+        return 0;
+    }
+
+    public void HandleKeyUp()
+    {
+        try
+        {
+            if (!IsSearching)
+            {
+                inputTimer.Stop();
+
+                inputTimer.Start();
+            }
+            else
+            {
+                cancelToken.Cancel(true);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+
+    }
+
+    public async void OnUserFinish(Object source, ElapsedEventArgs e)
+    {
+        try
+        {
+            await Task.Factory.StartNew(async () =>
+            {
+                try
+                {
+                    IsSearching = true;
+                    await InvokeAsync(() => StateHasChanged());
+
+                    List<IProductBLL> totalSearchPages = null;
+
+                    if (lastSearchQuery != searchQuery)
+                    {
+                        currentPage = 1;
+                        inputCurrentPage = currentPage.ToString();
+                    }
+
+                    if (orderType == "Ascending Order")
+                    {
+                        totalSearchPages = storedProducts.Where(c => GetPropValue(c, searchBy).ToString().ToLower().Contains(searchQuery.ToLower()))
+                        .OrderBy(c => GetPropValue(c, searchBy)).ToList();
+                        products = totalSearchPages.Skip((currentPage - 1) * productsPerPage).Take(productsPerPage).ToList();
+                    }
+
+                    else if (orderType == "Descending Order")
+                    {
+                        totalSearchPages = storedProducts.Where(c => GetPropValue(c, searchBy).ToString().ToLower().Contains(searchQuery.ToLower()))
+                        .OrderByDescending(c => GetPropValue(c, searchBy)).ToList();
+                        products = totalSearchPages.Skip((currentPage - 1) * productsPerPage).Take(productsPerPage).ToList();
+                    }
+
+
+
+
+                    IsSearching = false;
+
+                    if (lastSearchQuery != searchQuery || lastProductsPerPage != productsPerPage)
+                    {
+                        totalPages = totalSearchPages.Count() / productsPerPage;
+                        if ((totalSearchPages.Count() - (totalPages * productsPerPage)) != 0)
+                            totalPages++;
+
+                        if (totalPages == 0) totalPages = 1;
+                    }
+
+                    lastSearchQuery = searchQuery;
+                    lastProductsPerPage = productsPerPage;
+
+                    await InvokeAsync(() => StateHasChanged());
+                }
+                catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+            }, cancelToken.Token);
+
+            cancelToken = new CancellationTokenSource();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+    }
+
+    public async void HandleFileSelected(IFileListEntry[] images)
+    {
+        try
+        {
+            var image = images.FirstOrDefault();
+
+            var maxSizeBytes = 52400000;
+
+            var picture = (await image.ReadAllAsync(maxSizeBytes)).ToArray();
+
+            currentProductDetail.Picture = picture;
+
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+    }
+    public async void HandleFileSelectedForProduct(IFileListEntry[] images)
+    {
+        try
+        {
+            var image = images.FirstOrDefault();
+
+            var maxSizeBytes = 52400000;
+
+            var picture = (await image.ReadAllAsync(maxSizeBytes)).ToArray();
+
+            currentProduct.MainPicture = picture;
+
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+    }
+
+
+    public string ParseToImage(byte[] byteImage)
+    {
+        try
+        {
+            string base64 = Convert.ToBase64String(byteImage);
+            string imgSrc = String.Format("data:image/gif;base64,{0}", base64);
+
+            return imgSrc;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+            return "";
+        }
+
+    }
+}

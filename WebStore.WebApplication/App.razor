@@ -1,0 +1,35 @@
+﻿<Router AppAssembly="@typeof(Program).Assembly">
+    <Found Context="routeData">
+        <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)">
+            <NotAuthorized>
+
+                <div class="container margin-top">
+                    <div class=" not-found-main">
+                        <div><i class="far fa-meh-rolling-eyes"></i></div>
+                        <h1>Ohhh! Page Not Found</h1>
+                        <p>It seems we can’t find what you’re looking for. Go back to <a href="/">Homepage</a></p>
+                    </div>
+                </div>
+
+                
+            </NotAuthorized>
+            @*<Authorizing>
+                <h1>Authentication in progress</h1>
+                <p>Only visible while authentication is in progress.</p>
+            </Authorizing>*@
+        </AuthorizeRouteView>
+    </Found>
+    <NotFound>
+        <CascadingAuthenticationState>
+            <LayoutView Layout="@typeof(MainLayout)">
+                <div class="container margin-top">
+                    <div class=" not-found-main">
+                        <div><i class="far fa-meh-rolling-eyes"></i></div>
+                        <h1>Ohhh! Page Not Found</h1>
+                        <p>It seems we can’t find what you’re looking for. Go back to <a href="/">Homepage</a></p>
+                    </div>
+                </div>
+            </LayoutView>
+        </CascadingAuthenticationState>
+    </NotFound>
+</Router>

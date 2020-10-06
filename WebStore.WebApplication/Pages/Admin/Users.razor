@@ -1,0 +1,978 @@
+﻿@page "/admin/customers"
+@inject UserManager<ApplicationUser> _userManager;
+@inject IJSRuntime JSRuntime
+@inject ICustomerService _customerService
+@inject IMapper _mapper;
+@attribute [Authorize(Roles = "Administrator")]
+@inject ILogger<Users> Logger
+
+<div class="container-fluid margin-top admin-style">
+    <MainPageTitle Title="Customers" />
+
+    <Breadcrumb Items="BreadcrumbItems" />
+
+    <div class="container">
+
+
+
+        @if (customers == null)
+        {
+            <div class="d-flex justify-content-center">
+
+                <div class="small-lds-ellipsis"><div></div><div></div><div></div><div></div></div>
+
+            </div>
+
+        }
+        else
+        {
+
+            <div class="row ">
+
+                <div class="mb-4  col-sm-6 col-md-4 ">
+                    <button class="btn btn-outline-primary w-100" @onclick="OnAddClick"> ADD CUSTOMER</button>
+                </div>
+
+                <div class="mb-4  col-sm-6 col-md-4">
+                    <button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" @onclick="ToggleSearchDropdown"><span class="d-none d-lg-inline-block">Choose operation field:</span> @searchBy</button>
+                    <div class="dropdown-menu @searchDropdownMenuShowClass">
+                        @foreach (var parameter in copyParameters)
+                        {
+                            <div class="dropdown-item" @onclick="(() => ChangeSearchBy(parameter))"> @parameter</div>
+                        }
+
+                    </div>
+                </div>
+
+
+                <div class="col-sm-6 col-md-4 mb-4">
+                    <button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" @onclick="ToggleOrderDropdown"><span class="d-none d-lg-inline-block">Choose order:</span> @orderType</button>
+                    <div class="dropdown-menu @orderDropdownMenuShowClass">
+                        <div class="dropdown-item" @onclick='(() => ChangeOderType("Ascending Order"))'> Ascending Order</div>
+                        <div class="dropdown-item" @onclick='(() => ChangeOderType("Descending Order"))'> Descending Order</div>
+                    </div>
+                </div>
+
+
+                <div class="mb-4 col-sm-6 col-md-4">
+                    <button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" @onclick="ToggleProductsPerPageDropdown">Customers per page: @productsPerPage</button>
+                    <div class="dropdown-menu @productsPerPageDropdownMenuShowClass">
+                        <div class="dropdown-item" @onclick='(() => ChangeProductsPerPage(10))'> 10</div>
+                        <div class="dropdown-item" @onclick='(() => ChangeProductsPerPage(20))'> 20</div>
+                        <div class="dropdown-item" @onclick='(() => ChangeProductsPerPage(50))'> 50</div>
+                        <div class="dropdown-item" @onclick='(() => ChangeProductsPerPage(100))'> 100</div>
+                        <form @onsubmit='(() => ChangeProductsPerPage(int.TryParse(inputProductsPerPage, out int n)==true? n: productsPerPage))'>
+                            <input class="form-control" placeholder="Type and press enter " @bind="inputProductsPerPage" @bind:event="oninput" />
+                        </form>
+                    </div>
+                </div>
+                <div class="col-sm-6 mb-4  col-md-4 ">
+                    <div class="input-group">
+                        <div class="input-group-prepend">
+                            <div class="input-group-text">
+                                <i class="fas fa-search"></i>
+                            </div>
+                        </div>
+                        <input type="text" placeholder="Type to search" class="form-control" @bind="searchQuery" @bind:event="oninput" @onkeyup="@HandleKeyUp" />
+                    </div>
+
+                </div>
+                <div class="col-sm-6 col-md-4 col-lg-3 mb-4">
+                    <div class="data-card-pagination">
+                        <div class="row">
+                            @if (currentPage != 1)
+                            {
+                                <div class="col-2 arrow" @onclick="() => ChangeCurrentPage(currentPage - 1)">
+                                    <i class="fas fa-chevron-left"></i>
+                                </div>
+                            }
+                            else
+                            {<div class="col-2">
+                                </div>
+                            }
+                            <div class="col-4">
+                                <form @onsubmit='(() => ChangeCurrentPage(int.TryParse(inputCurrentPage, out int n)==true? n: currentPage))'>
+                                    <input class="form-control w-100" @bind="inputCurrentPage" @bind:event="oninput" />
+                                </form>
+                            </div>
+                            <div class="col-2 from-style">
+                                <span>from</span>
+                            </div>
+                            <div class="col-2">
+
+                                <span>@totalPages</span>
+                            </div>
+                            @if (currentPage != totalPages)
+                            {
+                                <div class="col-2 arrow" @onclick="()=>ChangeCurrentPage(currentPage+1)">
+                                    <i class="fas fa-chevron-right"></i>
+                                </div>
+                            }
+                            else
+                            {<div class="col-2">
+                                </div>
+                            }
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+            if (IsSearching)
+            {
+                <div class="d-flex justify-content-center">
+
+                    <div class="small-lds-ellipsis"><div></div><div></div><div></div><div></div></div>
+
+                </div>
+            }
+            else
+            {
+                <div class="row">
+                    @foreach (var customer in customers)
+                    {
+                        var customerName = customer.FirstName + " " + customer.LastName;
+                        var subTitle = GetPropValue(customer, searchBy) == null ? "NULL" : GetPropValue(customer, searchBy).ToString();
+                        <div class="col-sm-6 col-md-4 mb-3">
+                            <DataCard TItem="ICustomerBLL"
+                                      Title="@customerName"
+                                      SubTitle="@subTitle"
+                                      Color="DataCard<ICustomerBLL>.Colors.blue"
+                                      ItemData="customer"
+                                      OnEditClick="OnEditClick"
+                                      OnDeleteClick="OnDeleteClick">
+                                <i class="fas fa-user"></i>
+                            </DataCard>
+                        </div>
+                    }
+
+                    @if (customers.Count == 0)
+                    {
+                        <p>No results.</p>
+                    }
+
+
+                </div>
+            }
+            <div class="d-flex justify-content-center mt-4">
+                <div class="data-card-pagination">
+                    <div class="row">
+                        @if (currentPage > 1)
+                        {
+                            <div class="col-2 arrow " @onclick="() => ChangeCurrentPage(currentPage - 1)">
+                                <i class="fas fa-chevron-left"></i>
+                            </div>
+                        }
+                        else
+                        {<div class="col-2">
+                            </div>
+                        }
+                        <div class="col-4">
+                            <form @onsubmit='(() => ChangeCurrentPage(int.TryParse(inputCurrentPage, out int n)==true? n: currentPage))'>
+                                <input class="form-control w-100" @bind="inputCurrentPage" @bind:event="oninput" />
+                            </form>
+                        </div>
+                        <div class="col-2 from-style">
+                            <span>from</span>
+                        </div>
+                        <div class="col-2">
+                            <span>@totalPages</span>
+                        </div>
+                        @if (currentPage != totalPages)
+                        {
+                            <div class="col-2 arrow" @onclick="()=>ChangeCurrentPage(currentPage+1)">
+                                <i class="fas fa-chevron-right"></i>
+                            </div>
+                        }
+                        else
+                        {<div class="col-2">
+                            </div>
+                        }
+
+                    </div>
+                </div>
+            </div>
+        }
+
+
+    </div>
+
+    <DataModal Title="Edit Customer" DataModalIsClicked="editModalIsClicked" MaxWigth="800px">
+
+        @if (currentCustomer != null)
+        {
+            <EditForm class="container" Model="@currentCustomer" OnValidSubmit="@EditCurentCustomer">
+                <div class="data-modal-body row mb-4">
+                    <DataAnnotationsValidator />
+                    <div class="form-group col-md-6">
+                        <label for="CustomerID" class="control-label">CustomerID: </label>
+                        <InputText id="CustomerID" @bind-Value="currentCustomer.CustomerID" disabled class="form-control" />
+                        <ValidationMessage For="@(() => currentCustomer.CustomerID)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="Email" class="control-label">Email: </label>
+                        <InputText id="Email" @bind-Value="currentCustomer.Email" disabled class="form-control" />
+                        <ValidationMessage For="@(() => currentCustomer.Email)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="FirstName" class="control-label">FirstName: </label>
+                        <InputText id="FirstName" @bind-Value="currentCustomer.FirstName" class="form-control" />
+                        <ValidationMessage For="@(() => currentCustomer.FirstName)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="LastName" class="control-label">LastName: </label>
+                        <InputText id="LastName" @bind-Value="currentCustomer.LastName" class="form-control" />
+                        <ValidationMessage For="@(() => currentCustomer.LastName)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="Room" class="control-label">Room: </label>
+                        <InputText id="Room" @bind-Value="currentCustomer.Room" class="form-control" />
+                        <ValidationMessage For="@(() => currentCustomer.Room)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="Buildind" class="control-label">Building: </label>
+                        <InputText id="Buildind" @bind-Value="currentCustomer.Building" class="form-control" />
+                        <ValidationMessage For="@(() => currentCustomer.Building)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="Address_1" class="control-label">Address_1: </label>
+                        <InputText id="Address_1" @bind-Value="currentCustomer.Address_1" class="form-control" />
+                        <ValidationMessage For="@(() => currentCustomer.Address_1)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="Address_2" class="control-label">Address_2: </label>
+                        <InputText id="Address_2" @bind-Value="currentCustomer.Address_2" class="form-control" />
+                        <ValidationMessage For="@(() => currentCustomer.Address_2)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="City" class="control-label">City: </label>
+                        <InputText id="City" @bind-Value="currentCustomer.City" class="form-control" />
+                        <ValidationMessage For="@(() => currentCustomer.City)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="PostalCode" class="control-label">PostalCode: </label>
+                        <InputText id="PostalCode" @bind-Value="currentCustomer.PostalCode" class="form-control" />
+                        <ValidationMessage For="@(() => currentCustomer.PostalCode)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="Country" class="control-label">Country: </label>
+                        <InputText id="Country" @bind-Value="currentCustomer.Country" class="form-control" />
+                        <ValidationMessage For="@(() => currentCustomer.Country)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="Phone" class="control-label">Phone: </label>
+                        <InputText id="Phone" @bind-Value="currentCustomer.Phone" class="form-control" />
+                        <ValidationMessage For="@(() => currentCustomer.Phone)" />
+                    </div>
+
+                    <div class="form-group col-md-6">
+                        <label for="CreditCard" class="control-label">CreditCard: </label>
+                        <InputText id="CreditCard" @bind-Value="currentCustomer.CreditCard" class="form-control" />
+                        <ValidationMessage For="@(() => currentCustomer.CreditCard)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="CreditCardTypeID" class="control-label">CreditCardTypeID: </label>
+                        <InputText id="CreditCardTypeID" @bind-Value="currentCustomer.CreditCardTypeID" class="form-control" />
+                        <ValidationMessage For="@(() => currentCustomer.CreditCardTypeID)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="CardExpMo" class="control-label">CardExpMo: </label>
+                        <InputText id="CardExpMo" @bind-Value="currentCustomer.CardExpMo" class="form-control" />
+                        <ValidationMessage For="@(() => currentCustomer.CardExpMo)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="CardExpYr" class="control-label">CardExpYr: </label>
+                        <InputText id="CardExpYr" @bind-Value="currentCustomer.CardExpYr" class="form-control" />
+                        <ValidationMessage For="@(() => currentCustomer.CardExpYr)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="DateEntered" class="control-label">DateEntered: </label>
+                        <InputDate id="DateEntered" @bind-Value="currentCustomer.DateEntered" class="form-control" />
+                        <ValidationMessage For="@(() => currentCustomer.DateEntered)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="phone" class="control-label">Phone: </label>
+                        <InputText id="phone" @bind-Value="currentCustomer.Phone" class="form-control" />
+                        <ValidationMessage For="@(() => currentCustomer.Phone)" />
+                    </div>
+                </div>
+                <div class="data-modal-footer">
+                    <button type="submit" class="btn btn-primary mr-3">Save Changes</button>
+                    <button type="button" class="btn btn-secondary" @onclick="CloseEditModal">Close</button>
+                </div>
+
+            </EditForm>
+        }
+    </DataModal>
+
+    <DataModal Title="Add Customer" DataModalIsClicked="addModalIsClicked" MaxWigth="800px">
+
+        @if (currentCustomer != null)
+        {
+            <EditForm class="container" Model="@currentCustomer" OnValidSubmit="@AddCurentCustomer">
+                <div class="data-modal-body row mb-4">
+                    <DataAnnotationsValidator />
+                    <div class="form-group col-md-6">
+                        <label for="CustomerID" class="control-label">CustomerID: </label>
+                        <InputText id="CustomerID" @bind-Value="currentCustomer.CustomerID" disabled class="form-control" />
+                        <ValidationMessage For="@(() => currentCustomer.CustomerID)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="Email" class="control-label">Email: </label>
+                        <InputText id="Email" @bind-Value="currentCustomer.Email" class="form-control" />
+                        <ValidationMessage For="@(() => currentCustomer.Email)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="FirstName" class="control-label">FirstName: </label>
+                        <InputText id="FirstName" @bind-Value="currentCustomer.FirstName" class="form-control" />
+                        <ValidationMessage For="@(() => currentCustomer.FirstName)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="LastName" class="control-label">LastName: </label>
+                        <InputText id="LastName" @bind-Value="currentCustomer.LastName" class="form-control" />
+                        <ValidationMessage For="@(() => currentCustomer.LastName)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="Room" class="control-label">Room: </label>
+                        <InputText id="Room" @bind-Value="currentCustomer.Room" class="form-control" />
+                        <ValidationMessage For="@(() => currentCustomer.Room)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="Buildind" class="control-label">Building: </label>
+                        <InputText id="Buildind" @bind-Value="currentCustomer.Building" class="form-control" />
+                        <ValidationMessage For="@(() => currentCustomer.Building)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="Address_1" class="control-label">Address_1: </label>
+                        <InputText id="Address_1" @bind-Value="currentCustomer.Address_1" class="form-control" />
+                        <ValidationMessage For="@(() => currentCustomer.Address_1)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="Address_2" class="control-label">Address_2: </label>
+                        <InputText id="Address_2" @bind-Value="currentCustomer.Address_2" class="form-control" />
+                        <ValidationMessage For="@(() => currentCustomer.Address_2)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="City" class="control-label">City: </label>
+                        <InputText id="City" @bind-Value="currentCustomer.City" class="form-control" />
+                        <ValidationMessage For="@(() => currentCustomer.City)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="PostalCode" class="control-label">PostalCode: </label>
+                        <InputText id="PostalCode" @bind-Value="currentCustomer.PostalCode" class="form-control" />
+                        <ValidationMessage For="@(() => currentCustomer.PostalCode)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="Country" class="control-label">Country: </label>
+                        <InputText id="Country" @bind-Value="currentCustomer.Country" class="form-control" />
+                        <ValidationMessage For="@(() => currentCustomer.Country)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="Phone" class="control-label">Phone: </label>
+                        <InputText id="Phone" @bind-Value="currentCustomer.Phone" class="form-control" />
+                        <ValidationMessage For="@(() => currentCustomer.Phone)" />
+                    </div>
+
+                    <div class="form-group col-md-6">
+                        <label for="CreditCard" class="control-label">CreditCard: </label>
+                        <InputText id="CreditCard" @bind-Value="currentCustomer.CreditCard" class="form-control" />
+                        <ValidationMessage For="@(() => currentCustomer.CreditCard)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="CreditCardTypeID" class="control-label">CreditCardTypeID: </label>
+                        <InputText id="CreditCardTypeID" @bind-Value="currentCustomer.CreditCardTypeID" class="form-control" />
+                        <ValidationMessage For="@(() => currentCustomer.CreditCardTypeID)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="CardExpMo" class="control-label">CardExpMo: </label>
+                        <InputText id="CardExpMo" @bind-Value="currentCustomer.CardExpMo" class="form-control" />
+                        <ValidationMessage For="@(() => currentCustomer.CardExpMo)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="CardExpYr" class="control-label">CardExpYr: </label>
+                        <InputText id="CardExpYr" @bind-Value="currentCustomer.CardExpYr" class="form-control" />
+                        <ValidationMessage For="@(() => currentCustomer.CardExpYr)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="DateEntered" class="control-label">DateEntered: </label>
+                        <InputDate id="DateEntered" @bind-Value="currentCustomer.DateEntered" class="form-control" />
+                        <ValidationMessage For="@(() => currentCustomer.DateEntered)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="phone" class="control-label">Phone: </label>
+                        <InputText id="phone" @bind-Value="currentCustomer.Phone" class="form-control" />
+                        <ValidationMessage For="@(() => currentCustomer.Phone)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="Password" class="control-label">Password: </label>
+                        <InputText id="Password" @bind-Value="currentCustomer.Password" class="form-control" />
+                        <ValidationMessage For="@(() => currentCustomer.Password)" />
+                        @if (!string.IsNullOrWhiteSpace(passwordErrors))
+                        {
+                            <div class="validation-message">@passwordErrors</div>
+                        }
+                    </div>
+
+                </div>
+                <div class="data-modal-footer">
+                    <button type="submit" class="btn btn-primary mr-3">Save </button>
+                    <button type="button" class="btn btn-secondary" @onclick="CloseAddModal">Close</button>
+                </div>
+
+            </EditForm>
+        }
+    </DataModal>
+
+    <DataModal Title="Delete Customer" DataModalIsClicked="deleteModalIsClicked" MaxWigth="400px">
+        <div class="p-3">
+            You are sure you want to delete?
+        </div>
+        <div class="data-modal-footer">
+            <button type="button" class="btn btn-danger mr-3" @onclick="DeleteCurentCustomer"> Yes</button>
+            <button type="button" class="btn btn-secondary" @onclick="CloseDeleteModal">No</button>
+        </div>
+
+    </DataModal>
+
+
+</div>
+
+
+
+
+
+
+
+@code {
+    string[] BreadcrumbItems = new string[] { "Home", "Admin", "Customers" };
+
+    bool serchDropdownMenuIsClicked = false;
+    bool orderDropdownMenuIsClicked = false;
+    bool productsPerPageDropdownMenuIsClicked = false;
+    bool editModalIsClicked = false;
+    bool addModalIsClicked = false;
+    bool deleteModalIsClicked = false;
+
+    string productsPerPageDropdownMenuShowClass => productsPerPageDropdownMenuIsClicked ? "show" : null;
+    string searchDropdownMenuShowClass => serchDropdownMenuIsClicked ? "show" : null;
+    string orderDropdownMenuShowClass => orderDropdownMenuIsClicked ? "show" : null;
+
+    int productsPerPage;
+    int lastProductsPerPage;
+    string inputProductsPerPage;
+
+    string searchBy;
+
+    string orderType;
+
+    string searchQuery = "";
+    string lastSearchQuery = "";
+
+    string inputCurrentPage;
+    int currentPage;
+    int totalPages;
+
+    List<string> copyParameters;
+    bool IsSearching = false;
+    CancellationTokenSource cancelToken = new CancellationTokenSource();
+
+    private System.Timers.Timer inputTimer;
+
+    List<ICustomerBLL> customers = null;
+    List<ICustomerBLL> storedCustomers = null;
+
+    Customer currentCustomer;
+    ICustomerBLL currentCustomerBLL;
+
+    string passwordErrors = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            orderType = "Ascending Order";
+            productsPerPage = 10;
+
+
+            storedCustomers = (await _customerService.GetAllAsync()).ToList();
+            customers = storedCustomers.Take(productsPerPage).OrderBy(x => x.CustomerID).ToList();
+
+            copyParameters = typeof(Customer).GetProperties().Select(p => p.Name).Take(17).ToList();
+
+            searchBy = copyParameters[0];
+
+
+            currentPage = 1;
+            inputCurrentPage = "1";
+            totalPages = storedCustomers.Count() / productsPerPage;
+            if ((storedCustomers.Count() - (totalPages * productsPerPage)) != 0)
+                totalPages++;
+
+            if (totalPages == 0) totalPages = 1;
+
+            inputTimer = new System.Timers.Timer(500);
+            inputTimer.Elapsed += OnUserFinish;
+            inputTimer.AutoReset = false;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+    }
+
+    public void OnEditClick(ICustomerBLL customer)
+    {
+        try
+        {
+            currentCustomer = _mapper.Map<Customer>(customer);
+            editModalIsClicked = !editModalIsClicked;
+
+            JSRuntime.InvokeVoidAsync("Body.Overflow", !editModalIsClicked);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+
+    }
+
+    public async void EditCurentCustomer()
+    {
+        try
+        {
+            editModalIsClicked = false;
+            _customerService.Update(_mapper.Map<ICustomerBLL>(currentCustomer));
+            storedCustomers = (await _customerService.GetAllAsync()).ToList();
+            HandleKeyUp();
+            await JSRuntime.InvokeVoidAsync("Body.Overflow", true);
+        }
+       catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+    }
+
+    public void CloseEditModal()
+    {
+        try
+        {
+            editModalIsClicked = !editModalIsClicked;
+
+            JSRuntime.InvokeVoidAsync("Body.Overflow", true);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+
+    }
+
+    public void OnAddClick()
+    {
+        try
+        {
+            currentCustomer = new Customer();
+
+            addModalIsClicked = !addModalIsClicked;
+
+            JSRuntime.InvokeVoidAsync("Body.Overflow", !addModalIsClicked);
+
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+    }
+
+    public void CloseAddModal()
+    {
+        try
+        {
+            addModalIsClicked = !addModalIsClicked;
+
+            JSRuntime.InvokeVoidAsync("Body.Overflow", true);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+
+    }
+
+    public async void AddCurentCustomer()
+    {
+        try
+        {
+            var user = new ApplicationUser
+            {
+                UserName = currentCustomer.Email,
+                Email = currentCustomer.Email,
+                EmailConfirmed = true,
+            };
+            passwordErrors = "";
+            if (currentCustomer.Password == null)
+            {
+                passwordErrors += "Password is required.";
+                return;
+            }
+            var result = await _userManager.CreateAsync(user, currentCustomer.Password);
+            if (result.Succeeded)
+            {
+                currentCustomer.CustomerID = user.Id;
+                _customerService.Add(_mapper.Map<ICustomerBLL>(currentCustomer));
+                addModalIsClicked = false;
+                await _userManager.AddToRoleAsync(user, "Customer");
+                storedCustomers = (await _customerService.GetAllAsync()).ToList();
+                HandleKeyUp();
+                await JSRuntime.InvokeVoidAsync("Body.Overflow", true);
+                return;
+            }
+            foreach (var error in result.Errors)
+            {
+                passwordErrors += error.Description;
+            }
+
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+    }
+
+    public void OnDeleteClick(ICustomerBLL customer)
+    {
+        try
+        {
+            currentCustomer = _mapper.Map<Customer>(customer);
+            deleteModalIsClicked = !deleteModalIsClicked;
+
+            passwordErrors = "";
+
+            JSRuntime.InvokeVoidAsync("Body.Overflow", !deleteModalIsClicked);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+    }
+    public async void DeleteCurentCustomer()
+    {
+        try
+        {
+            var user = await _userManager.FindByIdAsync(currentCustomer.CustomerID);
+            var result = await _userManager.DeleteAsync(user);
+            if (result.Succeeded)
+            {
+                deleteModalIsClicked = false;
+                storedCustomers = (await _customerService.GetAllAsync()).ToList();
+                HandleKeyUp();
+                await JSRuntime.InvokeVoidAsync("Body.Overflow", true);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+    }
+
+    public void CloseDeleteModal()
+    {
+        try
+        {
+            deleteModalIsClicked = !deleteModalIsClicked;
+
+            JSRuntime.InvokeVoidAsync("Body.Overflow", true);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+
+    }
+
+    public void ToggleSearchDropdown()
+    {
+        serchDropdownMenuIsClicked = !serchDropdownMenuIsClicked;
+        orderDropdownMenuIsClicked = false;
+        productsPerPageDropdownMenuIsClicked = false;
+    }
+
+    public void ToggleOrderDropdown()
+    {
+        orderDropdownMenuIsClicked = !orderDropdownMenuIsClicked;
+        serchDropdownMenuIsClicked = false;
+        productsPerPageDropdownMenuIsClicked = false;
+    }
+
+    public void ToggleProductsPerPageDropdown()
+    {
+        productsPerPageDropdownMenuIsClicked = !productsPerPageDropdownMenuIsClicked;
+        orderDropdownMenuIsClicked = false;
+        serchDropdownMenuIsClicked = false;
+    }
+
+    public void ChangeCurrentPage(int page)
+    {
+        try
+        {
+            if (page >= totalPages)
+            {
+                currentPage = totalPages;
+                inputCurrentPage = currentPage.ToString();
+                HandleKeyUp();
+
+                return;
+            }
+
+            if (page <= 0)
+            {
+                currentPage = 1;
+                inputCurrentPage = currentPage.ToString();
+                HandleKeyUp();
+                return;
+            }
+
+            if (currentPage != page)
+            {
+                currentPage = page;
+                inputCurrentPage = currentPage.ToString();
+                HandleKeyUp();
+                return;
+            }
+        }
+       catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+
+    }
+
+    public void ChangeProductsPerPage(int productOnPage)
+    {
+        try
+        {
+            if (productsPerPage == productOnPage || productOnPage > 200) { ToggleProductsPerPageDropdown(); }
+            else
+            {
+                productsPerPage = productOnPage;
+                currentPage = 1;
+                inputCurrentPage = "1";
+                ToggleProductsPerPageDropdown();
+                HandleKeyUp();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+
+    }
+
+    public void ChangeOderType(string order)
+    {
+        try
+        {
+            if (orderType == order) { ToggleOrderDropdown(); }
+            else
+            {
+                orderType = order;
+                ToggleOrderDropdown();
+                HandleKeyUp();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+    }
+
+    public void ChangeSearchBy(string changedSearchBy)
+    {
+        try
+        {
+            if (searchBy == changedSearchBy) { ToggleSearchDropdown(); }
+            else
+            {
+                searchBy = changedSearchBy;
+                HandleKeyUp();
+                ToggleSearchDropdown();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+    }
+    public object GetPropValue(object src, string propName)
+    {
+
+        PropertyInfo propertyInfo = src.GetType().GetProperty(propName);
+
+        if (propertyInfo.PropertyType == typeof(DateTime))
+        {
+            object value = propertyInfo.GetValue(src, null);
+
+            return value;
+        }
+
+        if (propertyInfo.PropertyType == typeof(int))
+        {
+            object value = propertyInfo.GetValue(src, null);
+
+            return value == null ? 0 : value;
+        }
+
+        if (propertyInfo.PropertyType == typeof(int?))
+        {
+            object value = propertyInfo.GetValue(src, null);
+
+            return value == null ? 0 : value;
+        }
+
+        if (propertyInfo.PropertyType == typeof(double))
+        {
+            object value = propertyInfo.GetValue(src, null);
+
+            return value == null ? 0 : value;
+        }
+
+        if (propertyInfo.PropertyType == typeof(bool))
+        {
+            object value = propertyInfo.GetValue(src, null);
+
+            return value == null ? false : value;
+        }
+
+        if (propertyInfo.PropertyType == typeof(decimal))
+        {
+            object value = propertyInfo.GetValue(src, null);
+
+            return value == null ? 0 : value;
+        }
+
+        if (propertyInfo.PropertyType == typeof(float))
+        {
+            object value = propertyInfo.GetValue(src, null);
+
+            return value == null ? 0 : value;
+        }
+
+        if (propertyInfo.PropertyType == typeof(string))
+        {
+            object value = propertyInfo.GetValue(src, null);
+
+            return value == null ? "Null" : value;
+        }
+
+        return 0;
+    }
+
+
+    public void HandleKeyUp()
+    {
+        try
+        {
+            if (!IsSearching)
+            {
+                inputTimer.Stop();
+
+                inputTimer.Start();
+            }
+            else
+            {
+                cancelToken.Cancel(true);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+    }
+
+    public async void OnUserFinish(Object source, ElapsedEventArgs e)
+    {
+        try
+        {
+            await Task.Factory.StartNew(async () =>
+            {
+                try
+                {
+                    IsSearching = true;
+                    await InvokeAsync(() => StateHasChanged());
+
+                    List<ICustomerBLL> totalSearchPages = null;
+
+                    if (lastSearchQuery != searchQuery)
+                    {
+                        currentPage = 1;
+                        inputCurrentPage = currentPage.ToString();
+                    }
+
+                    if (orderType == "Ascending Order")
+                    {
+                        totalSearchPages = storedCustomers.Where(c => GetPropValue(c, searchBy).ToString().ToLower().Contains(searchQuery.ToLower()))
+                        .OrderBy(c => GetPropValue(c, searchBy)).ToList();
+                        customers = totalSearchPages.Skip((currentPage - 1) * productsPerPage).Take(productsPerPage).ToList();
+                    }
+
+                    else if (orderType == "Descending Order")
+                    {
+                        totalSearchPages = storedCustomers.Where(c => GetPropValue(c, searchBy).ToString().ToLower().Contains(searchQuery.ToLower()))
+                        .OrderByDescending(c => GetPropValue(c, searchBy)).ToList();
+                        customers = totalSearchPages.Skip((currentPage - 1) * productsPerPage).Take(productsPerPage).ToList();
+                    }
+
+
+
+
+                    IsSearching = false;
+
+                    if (lastSearchQuery != searchQuery || lastProductsPerPage != productsPerPage)
+                    {
+                        totalPages = totalSearchPages.Count() / productsPerPage;
+                        if ((totalSearchPages.Count() - (totalPages * productsPerPage)) != 0)
+                            totalPages++;
+
+                        if (totalPages == 0) totalPages = 1;
+                    }
+
+                    lastSearchQuery = searchQuery;
+                    lastProductsPerPage = productsPerPage;
+
+                    await InvokeAsync(() => StateHasChanged());
+                }
+                catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+            }, cancelToken.Token);
+
+            cancelToken = new CancellationTokenSource();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+    }
+
+    public bool IsDateTime(string txtDate)
+    {
+        DateTime tempDate;
+        return DateTime.TryParse(txtDate, out tempDate);
+    }
+}

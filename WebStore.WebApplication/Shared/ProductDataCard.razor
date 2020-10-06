@@ -1,0 +1,79 @@
+﻿
+@typeparam TItem
+<div class="data-card border-left-@Color ">
+    <div class="card-body">
+        <div class="row no-gutters align-items-center">
+            <div class="col-9">
+                <div class="card-title text-@Color">@Title</div>
+                <div class="card-sub-title">@SubTitle</div>
+            </div>
+            <div class="offset-1 col-2">
+                @ChildContent
+            </div>
+        </div>
+    </div>
+    <div class="card-footer">
+        <div class="row">
+            <div class=" col-3">
+                <i @onclick="@(() => OnEditClick.InvokeAsync(ItemData))" class="fas fa-edit"></i>
+               
+            </div>
+            <div class=" col-3">
+                <i @onclick="@(() => OnReviewClick.InvokeAsync(ItemData))" class="fas fa-comment"></i>
+            </div>
+            <div class=" col-3">
+                <i @onclick="@(() => OnDetailClick.InvokeAsync(ItemData))" class="fas fa-info-circle"></i>
+            </div>
+            <div class=" col-3">
+                <i @onclick="@(() => OnDeleteClick.InvokeAsync(ItemData))" class="fas fa-trash"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+
+    public enum Colors
+    {
+        blue,
+        indigo,
+        purple,
+        pink,
+        red,
+        orange,
+        yellow,
+        green,
+        teal,
+        cyan,
+        dark
+    }
+
+    [Parameter]
+    public string Title { get; set; }
+
+    [Parameter]
+    public string SubTitle { get; set; }
+
+    [Parameter]
+    public Colors Color { get; set; }
+
+    [Parameter]
+    public RenderFragment ChildContent { get; set; }
+
+    [Parameter]
+    public TItem ItemData { get; set; }
+
+    [Parameter]
+    public EventCallback<TItem> OnEditClick { get; set; }
+
+    [Parameter]
+    public EventCallback<TItem> OnReviewClick { get; set; }
+
+    [Parameter]
+    public EventCallback<TItem> OnDetailClick { get; set; }
+
+    [Parameter]
+    public EventCallback<TItem> OnDeleteClick { get; set; }
+
+
+}

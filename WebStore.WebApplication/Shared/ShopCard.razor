@@ -1,0 +1,257 @@
+﻿@inject NavigationManager NavigationManager;
+@inject ILogger<ShopCard> Logger;
+
+@if (Product != null)
+{
+    <div class="shop-card">
+        <a href="/product/@Product.ProductID">
+
+            <img src="@ParseToImage(Product.MainPicture)" class="w-100" />
+        </a>
+        <div class="d-none d-lg-block row options">
+            @if (ActiveQuickView)
+            {
+                <div class="icon-wrapper " @onclick="@(() => OnQuickViewClick.InvokeAsync(Product))"><i class="far fa-eye"></i></div>
+            }
+
+            <div class="icon-wrapper @activeWishIcon" @onclick="HandleWishIconClick"><i class="far fa-heart"></i></div>
+
+            @*<div class="icon-wrapper"><i class="fas fa-balance-scale"></i></div>*@
+        </div>
+        <div class="item-description-wrapper">
+            <div class="item-description">
+                <div class="row">
+                    <div class="col-12 firm-name pt-1">
+                        <a href="#">@Product.ProductFirm</a>
+                    </div>
+                    <a href="/product/@Product.ProductID#Reviews" class="col-12 ranking pt-1">
+                        @if (Product.Reviews != null && Product.Reviews.Count > 0)
+                        {
+                            starsAverage = Product.Reviews.Average(s => s.Stars);
+                            for (int i = 0; i < 5; i++)
+                            {
+
+                                starsAverage--;
+                                if (starsAverage >= 1)
+                                {
+
+                                    <i class="fas fa-star"></i>
+                                    continue;
+                                }
+
+                                else if (starsAverage > 0)
+                                {
+
+                                    <i class="fas fa-star-half-alt"></i>
+                                    continue;
+                                }
+
+                                <i class="far fa-star"></i>
+                            }
+
+                        }
+
+                        @if (Product.Reviews.Count > 0)
+                        {
+
+                            <span>
+                                (@Product.Reviews.Count)
+                            </span>
+                        }
+                        else
+                        {
+                            <i class="far fa-star"></i>
+                            <i class="far fa-star"></i>
+                            <i class="far fa-star"></i>
+                            <i class="far fa-star"></i>
+                            <i class="far fa-star"></i>
+                            <span> No reviews</span>
+                        }
+                    </a>
+                </div>
+
+                <a href="/product/@Product.ProductID" class="product-title d-block pt-1"> @Product.ProductName</a>
+                <div class="product-price d-block pt-1 pb-2">
+                    @if (Product.Discount == 0)
+                    {
+                        <div class="price ">$@Product.UnitPrice</div>
+                    }
+                    else
+                    {
+                        <span class="old-price">$@Product.UnitPrice</span>
+
+                        <span class="discount-price">$@(Math.Round(Product.UnitPrice - ((Product.UnitPrice / (decimal)100) * (decimal)Product.Discount), 2))</span>
+                    }
+                </div>
+                @if (!cartIconIsClicked)
+                {
+                    <button class="buy-btn" @onclick="HandleAddCartIconClick"><i class="fas fa-cart-plus"></i> Add </button>
+                }
+                else
+                {
+                    <button class="buy-btn" @onclick="HandleRemoveCartIconClick" style="background-color: #6c757d; border-color: #6c757d;"><i class="fas fa-eraser"></i> Remove</button>
+                }
+
+                <div class="d-lg-none row justify-content-around options-mobile">
+                    @if (ActiveQuickView)
+                    {
+                        <div class="col-4 " @onclick="@(() => OnQuickViewClick.InvokeAsync(Product))"><i class="far fa-eye"></i></div>
+                    }
+                    <div class="col-4 @activeWishIcon" @onclick="HandleWishIconClick"><i class="far fa-heart"></i></div>
+                    @*<div class="col-4"><i class="fas fa-balance-scale"></i></div>*@
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public IProductBLL Product { get; set; }
+    [Parameter]
+    public bool AuthenticatedUser { get; set; }
+    [Parameter]
+    public bool ActiveQuickView { get; set; }
+    [Parameter]
+    public List<IWishBLL> Wishes { get; set; }
+    [Parameter]
+    public List<OrderDetailBLL> OrderDetails { get; set; }
+    [Parameter]
+    public EventCallback<IProductBLL> OnQuickViewClick { get; set; }
+    [Parameter]
+    public EventCallback<IProductBLL> AddWish { get; set; }
+    [Parameter]
+    public EventCallback<IProductBLL> DeleteWish { get; set; }
+    [Parameter]
+    public EventCallback<IProductBLL> AddToCart { get; set; }
+    [Parameter]
+    public EventCallback<IOrderDetailBLL> RemoveFromCart { get; set; }
+
+
+    public bool wishIconIsClicked = false;
+    public bool cartIconIsClicked = false;
+
+
+    string activeWishIcon => wishIconIsClicked ? "active" : null;
+
+    public double starsAverage = 0;
+
+
+    protected override void OnParametersSet()
+    {
+        try
+        {
+            if (Product != null && Wishes != null && OrderDetails != null)
+            {
+                if (Wishes.FirstOrDefault(x => x.ProductID == Product.ProductID) != null)
+                {
+                    wishIconIsClicked = true;
+                }
+                else
+                {
+                    wishIconIsClicked = false;
+                }
+
+                if (OrderDetails.FirstOrDefault(x => x.ProductID == Product.ProductID) != null)
+                {
+                    cartIconIsClicked = true;
+                }
+                else { cartIconIsClicked = false; }
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error");
+        }
+    }
+
+    public async void HandleWishIconClick()
+    {
+        try
+        {
+            if (AuthenticatedUser)
+            {
+                wishIconIsClicked = !wishIconIsClicked;
+                if (wishIconIsClicked)
+                {
+                    await AddWish.InvokeAsync(Product);
+                }
+                else
+                {
+                    await DeleteWish.InvokeAsync(Product);
+                }
+            }
+            else
+            {
+                NavigationManager.NavigateTo("/Identity/Account/Login", true);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error");
+        }
+
+    }
+
+    public async void HandleAddCartIconClick()
+    {
+        try
+        {
+            if (AuthenticatedUser)
+            {
+                await AddToCart.InvokeAsync(Product);
+            }
+            else
+            {
+                NavigationManager.NavigateTo("/Identity/Account/Login", true);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error");
+        }
+
+    }
+
+
+    public async void HandleRemoveCartIconClick()
+    {
+        try
+        {
+            if (AuthenticatedUser)
+        {
+            var orderDetail = OrderDetails.FirstOrDefault(x => x.ProductID == Product.ProductID);
+
+            await RemoveFromCart.InvokeAsync(orderDetail);
+        }
+        else
+        {
+            NavigationManager.NavigateTo("/Identity/Account/Login", true);
+        }
+        }
+         catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error");
+        }
+        
+    }
+
+
+    public string ParseToImage(byte[] byteImage)
+    {
+        try
+        {
+            string base64 = Convert.ToBase64String(byteImage);
+            string imgSrc = String.Format("data:image/gif;base64,{0}", base64);
+
+            return imgSrc;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error"); 
+
+            return "";
+        }
+
+    }
+}

@@ -1,0 +1,849 @@
+﻿@page "/admin"
+@inject IJSRuntime JSRuntime
+@inject IOrderService _orderService;
+@attribute [Authorize(Roles = "Administrator")]
+@inject ILogger<Admin> Logger
+<div class="container-fluid margin-top">
+    <MainPageTitle Title="Admin Panel" />
+
+    <Breadcrumb Items="BreadcrumbItems" />
+
+    <div class="container">
+        <div class="content-heading">
+            <h2 class="title">DASHBOARD</h2>
+        </div>
+        <div class="row">
+            <a href="/admin/customers" class="col-xl-4 col-md-6 mb-4">
+                <AdminCard Title="Customers Acount" SubTitle="All registered customers. " Color="AdminCard.Colors.blue">
+                    <i class="fas fa-users"></i>
+                </AdminCard>
+            </a>
+            <a href="/admin/suppliers" class="col-xl-4 col-md-6 mb-4">
+                <AdminCard Title="Suppliers Acount" SubTitle="All suppliers. " Color="AdminCard.Colors.green">
+                    <i class="fas fa-dolly"></i>
+                </AdminCard>
+            </a>
+            <a href="/admin/products" class="col-xl-4 col-md-6 mb-4">
+                <AdminCard Title="Products" SubTitle="All products with products details." Color="AdminCard.Colors.orange">
+                    <i class="fas fa-tshirt"></i>
+                </AdminCard>
+            </a>
+            <a href="/admin/orders" class="col-xl-4 col-md-6 mb-4">
+                <AdminCard Title="Orders" SubTitle="All orders with order details. " Color="AdminCard.Colors.purple">
+                    <i class="fas fa-shopping-basket"></i>
+                </AdminCard>
+            </a>
+            <a href="/admin/categories" class="col-xl-4 col-md-6 mb-4">
+                <AdminCard Title="Categories" SubTitle="All categories. " Color="AdminCard.Colors.red">
+                    <i class="fas fa-clipboard-list"></i>
+                </AdminCard>
+            </a>
+            <a href="/admin/shippers" class="col-xl-4 col-md-6 mb-4">
+                <AdminCard Title="Shippers" SubTitle="All shippers. " Color="AdminCard.Colors.pink">
+                    <i class="fas fa-shipping-fast"></i>
+                </AdminCard>
+            </a>
+            <a href="/admin/payments" class="offset-xl-4 col-xl-4 offset-md-3 col-md-6 mb-4">
+                <AdminCard Title="Payments" SubTitle="All payments. " Color="AdminCard.Colors.yellow">
+                    <i class="fas fa-credit-card"></i>
+                </AdminCard>
+            </a>
+        </div>
+
+        <div class="row">
+
+            <div class="col-xl-8 col-lg-7">
+                <div class="chart-card mb-4">
+                    <div class="chart-card-header py-3">
+                        <h6 class="m-0">Traffic Overview</h6>
+                        <div class="chart-card-dropdown">
+                            <a class="usersTypeChartDropownBtn" @onclick="ToggleTrafficChartDropdown">
+                                <i class="fas fa-ellipsis-v"></i>
+                            </a>
+                            <div class="chart-card-dropdown-menu trafficChartDropdown">
+                                <a class="chart-card-dropdown-header">Choose:</a>
+                                <a class="chart-card-dropdown-item" @onclick="(()=>NewTrafficChartRange(7))">7 days</a>
+                                <a class="chart-card-dropdown-item" @onclick="(()=>NewTrafficChartRange(14))">14 days</a>
+                                <a class="chart-card-dropdown-item" @onclick="(()=>NewTrafficChartRange(30))">30 days </a>
+                                <a class="chart-card-dropdown-item" @onclick="(()=>NewTrafficChartRange(90))">90 days </a>
+                                <a class="chart-card-dropdown-item" @onclick="(()=>NewTrafficChartRange(365))">365 days</a>
+                                <div class="chart-card-dropdown-divider"></div>
+                                <a class="chart-card-dropdown-item" @onclick="CreateExelFileForTraffic">Download Data (@lastPickedTrafficDays days)</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="chart-card-body">
+                        <div class="loader-wrapper trafficChartLoader">
+                            <div class="small-lds-ellipsis"><div></div><div></div><div></div><div></div></div>
+                        </div>
+                        <div class="chart-area">
+                            <canvas id="trafficChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-4 col-lg-5">
+                <div class="chart-card shadow mb-4">
+                    <div class="chart-card-header py-3 ">
+                        <h6 class="m-0">Users Type</h6>
+                        <div class="chart-card-dropdown">
+                            <a class="usersTypeChartDropownBtn" @onclick="ToggleUsersTypeChartDropdown">
+                                <i class="fas fa-ellipsis-v"></i>
+                            </a>
+                            <div class="chart-card-dropdown-menu usersTypeChartDropdown">
+                                <a class="chart-card-dropdown-header">Choose:</a>
+                                <a class="chart-card-dropdown-item" @onclick="(()=> NewUsersTypeChartRange(7))">7 days</a>
+                                <a class="chart-card-dropdown-item" @onclick="(()=> NewUsersTypeChartRange(14))">14 days</a>
+                                <a class="chart-card-dropdown-item" @onclick="(()=> NewUsersTypeChartRange(30))">30 days </a>
+                                <a class="chart-card-dropdown-item" @onclick="(()=> NewUsersTypeChartRange(90))">90 days </a>
+                                <a class="chart-card-dropdown-item" @onclick="(()=> NewUsersTypeChartRange(365))">365 days</a>
+                                <div class="chart-card-dropdown-divider"></div>
+                                <a class="chart-card-dropdown-item" @onclick="CreateExelFileForUsersType">Download Data (@lastPickedUsersTypeDays days)</a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="chart-card-body">
+                        <div class="loader-wrapper usersTypeChartLoader">
+                            <div class="small-lds-ellipsis"><div></div><div></div><div></div><div></div></div>
+                        </div>
+                        <div class="chart-area">
+                            <canvas id="usersTypeChart"></canvas>
+                        </div>
+
+                    </div>
+
+                </div>
+            </div>
+        </div>
+        <div class="row">
+
+            <div class="col-12">
+                <div class="chart-card shadow mb-4">
+                    <div class="chart-card-header py-3 ">
+                        <h6 class="m-0">Products Sold</h6>
+                        <div class="chart-card-dropdown">
+
+                            <a class="productsSoldChartDropownBtn" @onclick="ToggleProductsSoldChartDropdown">
+                                <i class="fas fa-ellipsis-v"></i>
+                            </a>
+                            <div class="chart-card-dropdown-menu productsSoldChartDropdown">
+                                <a class="chart-card-dropdown-header">Choose:</a>
+                                <a class="chart-card-dropdown-item" @onclick="(()=> NewProductsSoldChartRange(7))">7 days</a>
+                                <a class="chart-card-dropdown-item" @onclick="(()=> NewProductsSoldChartRange(14))">14 days</a>
+                                <a class="chart-card-dropdown-item" @onclick="(()=> NewProductsSoldChartRange(30))">30 days </a>
+                                <a class="chart-card-dropdown-item" @onclick="(()=> NewProductsSoldChartRange(90))">90 days </a>
+                                <a class="chart-card-dropdown-item" @onclick="(()=> NewProductsSoldChartRange(365))">365 days</a>
+                                <div class="chart-card-dropdown-divider"></div>
+                                <a class="chart-card-dropdown-item" @onclick="CreateExelFileForProductsSold">Download Data (@lastPickedProductsSoldDays days)</a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="chart-card-body">
+                        <div class="loader-wrapper productsSoldChartLoader">
+                            <div class="small-lds-ellipsis"><div></div><div></div><div></div><div></div></div>
+                        </div>
+                        <div class="chart-area">
+                            <canvas id="productsSoldChart"></canvas>
+                        </div>
+
+                    </div>
+
+                </div>
+            </div>
+
+            <div class="col-lg-6">
+                <div class="chart-card shadow mb-4">
+                    <div class="chart-card-header py-3 ">
+                        <h6 class="m-0">Sold products by category</h6>
+                        <div class="chart-card-dropdown">
+
+                            <a class="productsByCategoryChartDropownBtn" @onclick="ToggleProductsByCategoryChartDropdown">
+                                <i class="fas fa-ellipsis-v"></i>
+                            </a>
+                            <div class="chart-card-dropdown-menu productsByCategoryChartDropdown">
+                                <a class="chart-card-dropdown-header">Choose:</a>
+                                <a class="chart-card-dropdown-item" @onclick="(()=> NewProductsByCategoryChartRange(7))">7 days</a>
+                                <a class="chart-card-dropdown-item" @onclick="(()=> NewProductsByCategoryChartRange(14))">14 days</a>
+                                <a class="chart-card-dropdown-item" @onclick="(()=> NewProductsByCategoryChartRange(30))">30 days </a>
+                                <a class="chart-card-dropdown-item" @onclick="(()=> NewProductsByCategoryChartRange(90))">90 days </a>
+                                <a class="chart-card-dropdown-item" @onclick="(()=> NewProductsByCategoryChartRange(365))">365 days</a>
+                                <div class="chart-card-dropdown-divider"></div>
+                                <a class="chart-card-dropdown-item" @onclick="CreateExelFileForProductsByCategory">Download Data (@lastPickedProductsByCategoryDays days)</a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="chart-card-body">
+                        <div class="loader-wrapper productsByCategoryChartLoader">
+                            <div class="small-lds-ellipsis"><div></div><div></div><div></div><div></div></div>
+                        </div>
+                        <div class="chart-area">
+                            <canvas id="productsByCategoryChart"></canvas>
+                        </div>
+
+                    </div>
+
+                </div>
+            </div>
+
+            <div class="col-lg-6">
+                <div class="chart-card shadow mb-4">
+                    <div class="chart-card-header py-3 ">
+                        <h6 class="m-0">Sold products by supplier</h6>
+                        <div class="chart-card-dropdown">
+
+                            <a class="productsBySupplierChartDropownBtn" @onclick="ToggleProductsBySupplierChartDropdown">
+                                <i class="fas fa-ellipsis-v"></i>
+                            </a>
+                            <div class="chart-card-dropdown-menu productsBySupplierChartDropdown">
+                                <a class="chart-card-dropdown-header">Choose:</a>
+                                <a class="chart-card-dropdown-item" @onclick="(()=> NewProductsBySupplierChartRange(7))">7 days</a>
+                                <a class="chart-card-dropdown-item" @onclick="(()=> NewProductsBySupplierChartRange(14))">14 days</a>
+                                <a class="chart-card-dropdown-item" @onclick="(()=> NewProductsBySupplierChartRange(30))">30 days </a>
+                                <a class="chart-card-dropdown-item" @onclick="(()=> NewProductsBySupplierChartRange(90))">90 days </a>
+                                <a class="chart-card-dropdown-item" @onclick="(()=> NewProductsBySupplierChartRange(365))">365 days</a>
+                                <div class="chart-card-dropdown-divider"></div>
+                                <a class="chart-card-dropdown-item" @onclick="CreateExelFileForProductsBySupplier">Download Data (@lastPickedProductsBySupplierDays days)</a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="chart-card-body">
+                        <div class="loader-wrapper productsBySupplierChartLoader">
+                            <div class="small-lds-ellipsis"><div></div><div></div><div></div><div></div></div>
+                        </div>
+                        <div class="chart-area">
+                            <canvas id="productsBySupplierChart"></canvas>
+                        </div>
+
+                    </div>
+
+                </div>
+            </div>
+
+
+
+        </div>
+    </div>
+
+
+</div>
+
+
+@code {
+    string[] BreadcrumbItems = new string[] { "Home", "Admin" };
+
+    int lastPickedTrafficDays = 7;
+    ReportManager lastTrafficReport = null;
+
+    int lastPickedUsersTypeDays = 7;
+    ReportManager lastUsersTypeReport = null;
+
+    int lastPickedProductsSoldDays = 7;
+    Tuple<string[], string[]> lastProductsSoldReport = null;
+
+    int lastPickedProductsByCategoryDays = 7;
+    Tuple<string[], string[], string[]> lastProductsByCategoryReport = null;
+
+    int lastPickedProductsBySupplierDays = 7;
+    Tuple<string[], string[], string[]> lastProductsBySupplierReport = null;
+
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                await NewTrafficChartRange(lastPickedTrafficDays);
+
+                await NewUsersTypeChartRange(lastPickedUsersTypeDays);
+
+                await NewProductsSoldChartRange(lastPickedProductsSoldDays);
+
+                await NewProductsByCategoryChartRange(lastPickedProductsByCategoryDays);
+
+                await NewProductsBySupplierChartRange(lastPickedProductsBySupplierDays);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Error");
+            }
+
+        }
+    }
+
+    //SoldProductsBySupplier
+    public async Task NewProductsBySupplierChartRange(int productsBySupplierDays)
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("Body.ShowChartLoader", "productsBySupplierChartLoader");
+
+            var dataForChart = _orderService.DataForSoldPoductsBySuppliersChart(productsBySupplierDays);
+            var suppliers = dataForChart.Item1;
+            var solds = dataForChart.Item2;
+            var colors = dataForChart.Item3;
+
+            lastProductsBySupplierReport = dataForChart;
+            lastPickedProductsBySupplierDays = productsBySupplierDays;
+
+            await JSRuntime.InvokeVoidAsync("Body.DrawPolarChartForSupplier", suppliers, solds, colors);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+    }
+
+    public async void CreateExelFileForProductsBySupplier()
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("Body.ShowChartLoader", "productsBySupplierChartLoader");
+            using (ExcelPackage excel = new ExcelPackage())
+            {
+                excel.Workbook.Worksheets.Add("ChartData");
+
+                var suppliers = lastProductsBySupplierReport.Item1;
+                var solds = lastProductsBySupplierReport.Item2;
+
+                var headerRowForChart = new List<string[]>()
+{
+                 new string[] { "Suppliers", "Solds"}
+            };
+
+                var cellDataForChart = new List<object[]>();
+
+
+                for (int i = 0; i < suppliers.Length; i++)
+                {
+                    cellDataForChart.Add(new object[] { suppliers[i], int.Parse(solds[i]) });
+                }
+
+                string headerRangeForChart = "A1:" + Char.ConvertFromUtf32(headerRowForChart[0].Length + 64) + "1";
+
+                var worksheetForChart = excel.Workbook.Worksheets["ChartData"];
+                worksheetForChart.DefaultColWidth = 25;
+                worksheetForChart.Cells[headerRangeForChart].Style.Font.Bold = true;
+                worksheetForChart.Cells[headerRangeForChart].Style.Font.Size = 14;
+                worksheetForChart.Cells[headerRangeForChart].Style.Font.Color.SetColor(System.Drawing.Color.Blue);
+                worksheetForChart.Column(1).Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                worksheetForChart.Column(2).Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                worksheetForChart.Cells[headerRangeForChart].LoadFromArrays(headerRowForChart);
+                worksheetForChart.Cells[2, 1].LoadFromArrays(cellDataForChart);
+
+                ExcelBarChart barChart = worksheetForChart.Drawings.AddChart("barChart", eChartType.ColumnClustered) as ExcelBarChart;
+
+                barChart.Title.Text = "Products Sold Chart";
+
+                var range1 = worksheetForChart.Cells["A2:A" + (cellDataForChart.Count + 1)];
+                var range2 = worksheetForChart.Cells["B2:B" + (cellDataForChart.Count + 1)];
+
+                barChart.Series.Add(range2, range1);
+                barChart.Series[0].Header = "Solds";
+                barChart.Legend.Position = eLegendPosition.Right;
+
+                barChart.SetSize(900, 600);
+                barChart.XAxis.Title.Text = "Suppliers";
+                barChart.XAxis.Title.Font.Size = 10;
+                barChart.YAxis.Title.Text = "Solds";
+                barChart.YAxis.Title.Font.Size = 10;
+                barChart.SetPosition(5, 0, 3, 0);
+
+
+                await JSRuntime.InvokeVoidAsync(
+                "Body.SaveAs",
+                "ProductsSoldBySuppliersChartData.xlsx",
+                excel.GetAsByteArray());
+
+                await JSRuntime.InvokeVoidAsync("Body.HideChartLoader", "productsBySupplierChartLoader");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+    }
+
+    public async void ToggleProductsBySupplierChartDropdown()
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("Body.ToggleDropDown", "productsBySupplierChartDropdown");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+    }
+
+
+    //SoldProductsByCategory
+    public async Task NewProductsByCategoryChartRange(int productsByCategoryDays)
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("Body.ShowChartLoader", "productsByCategoryChartLoader");
+
+            var dataForChart = _orderService.DataForSoldPoductsByCtegoriesChart(productsByCategoryDays);
+            var categories = dataForChart.Item1;
+            var solds = dataForChart.Item2;
+            var colors = dataForChart.Item3;
+
+            lastProductsByCategoryReport = dataForChart;
+            lastPickedProductsByCategoryDays = productsByCategoryDays;
+
+            await JSRuntime.InvokeVoidAsync("Body.DrawPolarChartForCategory", categories, solds, colors);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+    }
+
+    public async void CreateExelFileForProductsByCategory()
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("Body.ShowChartLoader", "productsByCategoryChartLoader");
+            using (ExcelPackage excel = new ExcelPackage())
+            {
+                excel.Workbook.Worksheets.Add("ChartData");
+
+                var categories = lastProductsByCategoryReport.Item1;
+                var solds = lastProductsByCategoryReport.Item2;
+
+                var headerRowForChart = new List<string[]>()
+                {
+                    new string[] { "Categories", "Solds"}
+                };
+
+                var cellDataForChart = new List<object[]>();
+
+
+                for (int i = 0; i < categories.Length; i++)
+                {
+                    cellDataForChart.Add(new object[] { categories[i], int.Parse(solds[i]) });
+                }
+
+                string headerRangeForChart = "A1:" + Char.ConvertFromUtf32(headerRowForChart[0].Length + 64) + "1";
+
+                var worksheetForChart = excel.Workbook.Worksheets["ChartData"];
+                worksheetForChart.DefaultColWidth = 25;
+                worksheetForChart.Cells[headerRangeForChart].Style.Font.Bold = true;
+                worksheetForChart.Cells[headerRangeForChart].Style.Font.Size = 14;
+                worksheetForChart.Cells[headerRangeForChart].Style.Font.Color.SetColor(System.Drawing.Color.Blue);
+                worksheetForChart.Column(1).Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                worksheetForChart.Column(2).Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                worksheetForChart.Cells[headerRangeForChart].LoadFromArrays(headerRowForChart);
+                worksheetForChart.Cells[2, 1].LoadFromArrays(cellDataForChart);
+
+                ExcelBarChart barChart = worksheetForChart.Drawings.AddChart("barChart", eChartType.ColumnClustered) as ExcelBarChart;
+
+                barChart.Title.Text = "Products Sold Chart";
+
+                var range1 = worksheetForChart.Cells["A2:A" + (cellDataForChart.Count + 1)];
+                var range2 = worksheetForChart.Cells["B2:B" + (cellDataForChart.Count + 1)];
+
+                barChart.Series.Add(range2, range1);
+                barChart.Series[0].Header = "Solds";
+                barChart.Legend.Position = eLegendPosition.Right;
+
+                barChart.SetSize(900, 600);
+                barChart.XAxis.Title.Text = "Categories";
+                barChart.XAxis.Title.Font.Size = 10;
+                barChart.YAxis.Title.Text = "Solds";
+                barChart.YAxis.Title.Font.Size = 10;
+                barChart.SetPosition(5, 0, 3, 0);
+
+
+                await JSRuntime.InvokeVoidAsync(
+                "Body.SaveAs",
+                "ProductsSoldByCategoriesChartData.xlsx",
+                excel.GetAsByteArray());
+
+                await JSRuntime.InvokeVoidAsync("Body.HideChartLoader", "productsByCategoryChartLoader");
+
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+    }
+
+    public async void ToggleProductsByCategoryChartDropdown()
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("Body.ToggleDropDown", "productsByCategoryChartDropdown");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+    }
+
+
+    //ProductsSold
+    public async Task NewProductsSoldChartRange(int productsSoldDays)
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("Body.ShowChartLoader", "productsSoldChartLoader");
+
+            var dataForChart = _orderService.DataForSoldPoductsChart(productsSoldDays);
+            var dates = dataForChart.Item1;
+            var solds = dataForChart.Item2;
+
+            lastProductsSoldReport = dataForChart;
+            lastPickedProductsSoldDays = productsSoldDays;
+            await JSRuntime.InvokeVoidAsync("Body.DrawBarChart", dates, solds);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+    }
+
+    public async void CreateExelFileForProductsSold()
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("Body.ShowChartLoader", "productsSoldChartLoader");
+            using (ExcelPackage excel = new ExcelPackage())
+            {
+                excel.Workbook.Worksheets.Add("ChartData");
+
+                var dates = lastProductsSoldReport.Item1;
+                var solds = lastProductsSoldReport.Item2;
+
+                var headerRowForChart = new List<string[]>()
+                {
+                    new string[] { "Dates", "Solds"}
+                };
+
+                var cellDataForChart = new List<object[]>();
+
+
+                for (int i = 0; i < dates.Length; i++)
+                {
+                    cellDataForChart.Add(new object[] { dates[i], int.Parse(solds[i]) });
+                }
+
+                string headerRangeForChart = "A1:" + Char.ConvertFromUtf32(headerRowForChart[0].Length + 64) + "1";
+
+                var worksheetForChart = excel.Workbook.Worksheets["ChartData"];
+                worksheetForChart.DefaultColWidth = 25;
+                worksheetForChart.Cells[headerRangeForChart].Style.Font.Bold = true;
+                worksheetForChart.Cells[headerRangeForChart].Style.Font.Size = 14;
+                worksheetForChart.Cells[headerRangeForChart].Style.Font.Color.SetColor(System.Drawing.Color.Blue);
+                worksheetForChart.Column(1).Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                worksheetForChart.Column(2).Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                worksheetForChart.Cells[headerRangeForChart].LoadFromArrays(headerRowForChart);
+                worksheetForChart.Cells[2, 1].LoadFromArrays(cellDataForChart);
+
+                ExcelBarChart barChart = worksheetForChart.Drawings.AddChart("barChart", eChartType.ColumnClustered) as ExcelBarChart;
+
+                barChart.Title.Text = "Products Sold Chart";
+
+                var range1 = worksheetForChart.Cells["A2:A" + (cellDataForChart.Count + 1)];
+                var range2 = worksheetForChart.Cells["B2:B" + (cellDataForChart.Count + 1)];
+
+                barChart.Series.Add(range2, range1);
+                barChart.Series[0].Header = "Solds";
+                barChart.Legend.Position = eLegendPosition.Right;
+
+                barChart.SetSize(900, 600);
+                barChart.XAxis.Title.Text = "Dates";
+                barChart.XAxis.Title.Font.Size = 10;
+                barChart.YAxis.Title.Text = "Solds";
+                barChart.YAxis.Title.Font.Size = 10;
+                barChart.SetPosition(5, 0, 3, 0);
+
+
+                await JSRuntime.InvokeVoidAsync(
+                "Body.SaveAs",
+                "ProductsSoldChartData.xlsx",
+                excel.GetAsByteArray());
+
+                await JSRuntime.InvokeVoidAsync("Body.HideChartLoader", "productsSoldChartLoader");
+
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+    }
+
+    public async void ToggleProductsSoldChartDropdown()
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("Body.ToggleDropDown", "productsSoldChartDropdown");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+    }
+
+
+    //UsersTypeChart
+    public async Task NewUsersTypeChartRange(int usersTypeDays)
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("Body.ShowChartLoader", "usersTypeChartLoader");
+
+            lastPickedUsersTypeDays = usersTypeDays;
+
+            var report = new ReportManager(usersTypeDays);
+
+            lastUsersTypeReport = report;
+
+            await JSRuntime.InvokeVoidAsync("Body.DrawDoughnutChart", report.NewVisitors, report.ReturningVisitors, report.TotalVisitors);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+    }
+
+    public async void CreateExelFileForUsersType()
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("Body.ShowChartLoader", "usersTypeChartLoader");
+
+            using (ExcelPackage excel = new ExcelPackage())
+            {
+                excel.Workbook.Worksheets.Add("ChartData");
+
+                var headerRow = new List<string[]>()
+                {
+                    new string[] { "Date", "New Users", "Returning Users", "Total Users"}
+                };
+
+                var cellData = new List<object[]>();
+
+                int i = 0;
+
+                foreach (var item in lastUsersTypeReport.TotalVisitorsByDate)
+                {
+
+                    int newVisitors = 0, returningVisitors = 0;
+
+                    foreach (var visitor in lastUsersTypeReport.NewVisitorsByDate)
+                    {
+                        if (visitor.Item1 == item.Item1)
+                        {
+                            newVisitors += visitor.Item2;
+
+                            break;
+                        }
+                    }
+
+                    foreach (var visitor in lastUsersTypeReport.ReturningVisitorsByDate)
+                    {
+                        if (visitor.Item1 == item.Item1)
+                        {
+                            returningVisitors += visitor.Item2;
+
+                            break;
+                        }
+                    }
+
+                    cellData.Add(new object[] { item.Item1, newVisitors, returningVisitors, item.Item2 });
+                    i++;
+                }
+                cellData.Add(new object[] { "Summary ", lastUsersTypeReport.NewVisitors, lastUsersTypeReport.ReturningVisitors });
+
+                string headerRange = "A1:" + Char.ConvertFromUtf32(headerRow[0].Length + 64) + "1";
+
+                var worksheet = excel.Workbook.Worksheets["ChartData"];
+                worksheet.DefaultColWidth = 25;
+                worksheet.Cells[headerRange].Style.Font.Bold = true;
+                worksheet.Cells[headerRange].Style.Font.Size = 14;
+                worksheet.Cells[headerRange].Style.Font.Color.SetColor(System.Drawing.Color.Blue);
+                worksheet.Column(1).Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                worksheet.Column(2).Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                worksheet.Column(3).Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                worksheet.Column(4).Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                worksheet.Cells[headerRange].LoadFromArrays(headerRow);
+                worksheet.Cells[2, 1].LoadFromArrays(cellData);
+
+                ExcelPieChart pieChart = worksheet.Drawings.AddChart("pieChart", eChartType.Pie3D) as ExcelPieChart;
+
+                pieChart.Title.Text = "Users Type";
+
+                pieChart.Series.Add(ExcelRange.GetAddress(cellData.Count + 1, 2, cellData.Count + 1, 3), ExcelRange.GetAddress(1, 2, 1, 3));
+
+                pieChart.Legend.Position = eLegendPosition.Bottom;
+
+
+                pieChart.DataLabel.ShowPercent = true;
+
+                pieChart.SetSize(900, 600);
+
+                pieChart.SetPosition(5, 0, 4, 0);
+
+
+                await JSRuntime.InvokeVoidAsync(
+                "Body.SaveAs",
+                "UsersTypeChartData.xlsx",
+                excel.GetAsByteArray());
+
+                await JSRuntime.InvokeVoidAsync("Body.HideChartLoader", "usersTypeChartLoader");
+
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+    }
+
+    public async void ToggleUsersTypeChartDropdown()
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("Body.ToggleDropDown", "usersTypeChartDropdown");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+    }
+
+
+    //TrafficChart
+    public async Task NewTrafficChartRange(int trafficDays)
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("Body.ShowChartLoader", "trafficChartLoader");
+
+            lastPickedTrafficDays = trafficDays;
+
+            //creating report
+            var report = new ReportManager(trafficDays);
+
+            lastTrafficReport = report;
+
+            string[] days = new string[trafficDays];
+            string[] visitors = new string[trafficDays];
+
+            int i = 0;
+            foreach (var visitor in report.TotalVisitorsByDate)
+            {
+                days[i] = visitor.Item1;
+                visitors[i] = visitor.Item2.ToString();
+                i++;
+            }
+
+            await JSRuntime.InvokeVoidAsync("Body.DrawLineChart", days, visitors);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+    }
+
+    public async void CreateExelFileForTraffic()
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("Body.ShowChartLoader", "trafficChartLoader");
+            using (ExcelPackage excel = new ExcelPackage())
+            {
+                excel.Workbook.Worksheets.Add("ChartData");
+
+                var headerRow = new List<string[]>()
+                {
+                    new string[] { "Date", "Visitors"}
+                };
+
+                var cellData = new List<object[]>();
+
+                foreach (var item in lastTrafficReport.TotalVisitorsByDate)
+                {
+                    cellData.Add(new object[] { item.Item1, item.Item2 });
+                }
+
+                string headerRange = "A1:" + Char.ConvertFromUtf32(headerRow[0].Length + 64) + "1";
+
+                var worksheet = excel.Workbook.Worksheets["ChartData"];
+                worksheet.DefaultColWidth = 25;
+                worksheet.Cells[headerRange].Style.Font.Bold = true;
+                worksheet.Cells[headerRange].Style.Font.Size = 14;
+                worksheet.Cells[headerRange].Style.Font.Color.SetColor(System.Drawing.Color.Blue);
+                worksheet.Column(1).Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                worksheet.Column(2).Style.HorizontalAlignment = ExcelHorizontalAlignment.Center;
+                worksheet.Cells[headerRange].LoadFromArrays(headerRow);
+                worksheet.Cells[2, 1].LoadFromArrays(cellData);
+
+                ExcelLineChart lineChart = worksheet.Drawings.AddChart("lineChart", eChartType.Line) as ExcelLineChart;
+
+                lineChart.Title.Text = "Traffic Chart";
+
+                var range1 = worksheet.Cells["A2:A" + (cellData.Count + 1)];
+                var range2 = worksheet.Cells["B2:B" + (cellData.Count + 1)];
+
+                lineChart.Series.Add(range2, range1);
+
+                lineChart.Series[0].Header = "Visitors";
+
+                lineChart.Legend.Position = eLegendPosition.Right;
+
+                lineChart.SetSize(900, 600);
+
+                lineChart.SetPosition(5, 0, 3, 0);
+
+                await JSRuntime.InvokeVoidAsync(
+                "Body.SaveAs",
+                "TrafficChartData.xlsx",
+                excel.GetAsByteArray());
+
+                await JSRuntime.InvokeVoidAsync("Body.HideChartLoader", "trafficChartLoader");
+
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+    }
+
+    public async void ToggleTrafficChartDropdown()
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("Body.ToggleDropDown", "trafficChartDropdown");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+    }
+}
+
+

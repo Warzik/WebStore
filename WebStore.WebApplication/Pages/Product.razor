@@ -1,0 +1,889 @@
+﻿@inject IJSRuntime JSRuntime;
+@inject IProductService _productService;
+@inject ISupplierService _supplierService;
+@inject ICategoryService _categoryService;
+@inject IReviewService _reviewService;
+@inject IOrderService _orderService;
+@inject IWishService _wishService;
+@inject IOrderDetailService _orderDetailService;
+@inject IProductDetailService _productDetailService;
+@inject UserManager<ApplicationUser> _userManager;
+@inject NavigationManager NavigationManager;
+@inject WebApplication.Services.DataNotificationService  _dataNotificationService;
+@implements IDisposable;
+@inject IMapper _mapper;
+@inject ILogger<Product> Logger
+
+@page "/product/{productID:int}"
+
+<div class="container-fluid margin-top product">
+
+    @if (product == null)
+    {
+        <MainPageTitle Title='Product Not Found' />
+
+        <Breadcrumb Items="BreadcrumbItems" />
+
+    }
+    else
+    {
+        <MainPageTitle Title='@product.ProductName' />
+
+        <Breadcrumb Items="BreadcrumbItems" />
+
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="product-slideshow">
+                        @if (images != null)
+                        {
+                            if (images.Count > 0)
+                            {
+                                int j = 0;
+                                @foreach (var image in images)
+                                {
+                                    <div class="slide" style="@slidesActiveStyle[j]">
+                                        <img src="@image.Image" />
+                                    </div>
+                                    j++;
+                                }
+                            }
+
+                            if (slides > 0)
+                            {
+                                <a class="prev " @onclick="@(() => PlusSlide(-1))">&#10094;</a>
+                                <a class="next " @onclick="@(() => PlusSlide(1))">&#10095;</a>
+                            }
+
+
+                            <div class="dots @navigationClass">
+                                @if (dotsActiveClass.Count > 0)
+                                {
+                                    int i = 0;
+                                    foreach (var dot in dotsActiveClass)
+                                    {
+                                        int index = i + 1;
+                                        <span class="dot @dotsActiveClass[i]" @onclick="@(() => CurrentSlide(index))"></span>
+                                        i++;
+                                    }
+
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <div class="col-md-6 product-description">
+                    <div class="row">
+                        <div class="col-12 "><span class="text-dark">Vendor:</span> <span class="text-gray">@product.ProductFirm</span></div>
+                        <div class="col-12 "><span class="text-dark">UPC:</span> <span class="text-gray">@product.UPC</span></div>
+                        <div class="col-12"><span class="text-dark">Quantity Per Unit:</span> <span class="text-gray">@product.QuantityPerUnit</span></div>
+                        <div class="col-12">
+                            <span class="text-dark">Availability:</span>
+                            @if (product.ProductAvailable)
+                            {
+                                <span class="text-green">In stock</span>
+                            }
+                            else
+                            {
+                                <span class="text-danger">Out of stock</span>
+                            }
+                        </div>
+                    </div>
+                    <div class="row ">
+                        <h3 class="product-title col-12">@product.ProductName</h3>
+                    </div>
+                    @if (product.Discount == 0)
+                    {
+                        <div class="price col-12 ">$@product.UnitPrice</div>
+                    }
+                    else
+                    {
+                        <div class="col-12 ">
+                            <span class="old-price">$@product.UnitPrice</span>
+
+                            <span class="discount-price">$@(Math.Round(product.UnitPrice - ((product.UnitPrice / (decimal)100) * (decimal)product.Discount), 2))</span>
+                        </div>
+                    }
+                    <div class="col-12 ranking pt-1">
+                        @{
+                            ChangeStars();
+                            for (int k = 0; k < 5; k++)
+                            {
+                                starsAverage--;
+                                if (starsAverage >= 1)
+                                {
+
+                                    <i class="fas fa-star"></i>
+                                    continue;
+                                }
+                                else if (starsAverage > 0)
+                                {
+
+                                    <i class="fas fa-star-half-alt"></i>
+                                    continue;
+                                }
+
+                                <i class="far fa-star"></i>
+
+                            }
+                        }
+
+
+                        @if (product.Reviews?.Count > 0)
+                        {
+
+                            <span>
+                                (@product.Reviews?.Count)
+                            </span>
+                        }
+                        else
+                        {
+                            <span> No reviews</span>
+                        }
+
+                    </div>
+                    <div class="text-gray">
+                        @product.ProductDescription
+                    </div>
+
+
+
+                    <div class="product-collors">
+                        @if (images.Count > 0)
+                        {
+                            int colorCount = 0;
+                            <div> Colors:</div>
+                            <div class="row">
+                                @foreach (var image in images)
+                                {
+                                    if (image.Color != null)
+                                    {
+                                        <div class="color" @onclick="@(() => CurrentSlide(images.FindIndex(x => x == image) + 1))" style="background-color:@image.Color"> </div>
+                                        colorCount++;
+                                    }
+
+                                }
+                                @if (colorCount == 0)
+                                {
+                                    <span class="ml-3"> No Colors</span>
+                                }
+                            </div>
+                        }
+                    </div>
+
+                    <div class="product-materials">
+                        @if (images.Count > 0)
+                        {
+                            int materialCount = 0;
+                            <div> Material:</div>
+                            <div class="row">
+                                @foreach (var image in images)
+                                {
+                                    if (image.Material != null)
+                                    {
+                                        <div class="material" @onclick="@(() => CurrentSlide(images.FindIndex(x => x == image) + 1))"> @image.Material</div>
+                                        materialCount++;
+                                    }
+                                }
+                                @if (materialCount == 0)
+                                {
+                                    <span class="ml-3"> No Materials</span>
+                                }
+                            </div>
+                        }
+                    </div>
+
+                    <div class="row mt-3 justify-content-around">
+
+                        <div class="icon-wrapper mr-3 @activeWishIcon" @onclick="HandleWishIconClick"><i class="far fa-heart"></i></div>
+
+                        @if (!cartIconIsClicked)
+                        {
+                            <button class="btn btn-primary" @onclick="HandleAddCartIconClick"><i class="fas fa-cart-plus"></i> Add </button>
+                        }
+                        else
+                        {
+                            <button class="btn btn-primary" @onclick="HandleRemoveCartIconClick" style="background-color: #6c757d; border-color: #6c757d;"><i class="fas fa-eraser"></i> Remove</button>
+                        }
+
+                    </div>
+                </div>
+            </div>
+            @if (relatedProducts != null && relatedProducts.Count > 0)
+            {
+                <div class="related-products-section">
+                    <div class="content-heading">
+                        <h2 class="title">Related Products By Vendor</h2>
+                    </div>
+                </div>
+                <div class="row">
+                    @foreach (var product in relatedProducts)
+                    {
+                        <div class="col-6 col-md-4 col-lg-3">
+                            <ShopCard Product="product"
+                                      AuthenticatedUser="isAuthenticatedUser"
+                                      ActiveQuickView="false"
+                                      AddWish="AddWish"
+                                      DeleteWish="DeleteWish"
+                                      AddToCart="AddProductToCart"
+                                      RemoveFromCart="RemoveProductFromCart"
+                                      Wishes="wishes"
+                                      OrderDetails="currentOrder.OrderDetails.ToList()" />
+                        </div>
+                    }
+                </div>
+            }
+
+
+
+            <div class="reviews-section">
+                <div class="content-heading">
+                    <h2 class="title">Write Review</h2>
+                    <div class="block-note">You're reviewing: @product.ProductName</div>
+                </div>
+                @if (reviewSending)
+                {
+                    <div style="text-align:center; margin-bottom:50px;"> Review Sent, Thank You</div>
+                }
+                else
+                {
+                    <EditForm Model="@userReview" OnValidSubmit="@SendReview" class="row ">
+                        <DataAnnotationsValidator />
+                        <div class="col-12 d-flex justify-content-center stars">
+                            @{
+                                int d = 0;
+                                for (int j = 0; j < userReview.Stars; j++)
+                                {
+                                    int coutEmptyStars = j;
+                                    <i class="fas fa-star text-yellow" @onclick="@(() => ChangeReviewStars(coutEmptyStars + 1))"></i>
+                                    d++;
+                                }
+                                for (; d < 5; d++)
+                                {
+                                    int coutStars = d;
+                                    <i class="far fa-star" @onclick="@(() => ChangeReviewStars(coutStars + 1))"></i>
+                                }
+
+                            }
+
+                        </div>
+                        @if (userReview.Stars == 0)
+                        {<div class="col-12 d-flex justify-content-center">   <ValidationMessage For="@(() => userReview.Stars)" /></div>}
+
+                        
+                            <div class="form-group col-md-6">
+                                <label for="Email" class="control-label">Email: </label>
+                                <InputText id="Email" @bind-Value="userReview.Email" class="form-control" />
+                                <ValidationMessage For="@(() => userReview.Email)" />
+                            </div>
+                        
+                        <div class="form-group col-md-6">
+                            <label for="Advantages" class="control-label">Advantages: </label>
+                            <InputText id="Advantages" @bind-Value="userReview.Advantages" class="form-control" />
+                            <ValidationMessage For="@(() => userReview.Advantages)" />
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label for="Disadvantages" class="control-label">Disadvantages: </label>
+                            <InputText id="Disadvantages" @bind-Value="userReview.Disadvantages" class="form-control" />
+                            <ValidationMessage For="@(() => userReview.Disadvantages)" />
+                        </div>
+                        <div class="form-group col-md-6">
+                            <label for="Comment" class="control-label">Comment: </label>
+                            <InputTextArea id="Comment" @bind-Value="userReview.Comment" class="form-control" />
+                            <ValidationMessage For="@(() => userReview.Comment)" />
+                        </div>
+                        <div class="w-100 justify-content-center mt-3">
+                            <button type="submit" class="btn ">Send Review </button>
+                        </div>
+
+
+                    </EditForm>
+                }
+
+
+                <div class="content-heading" id="reviews">
+                    <h2 class="title">Reviews</h2>
+                    <div class="block-note">Reviews for: @product.ProductName</div>
+                </div>
+                @foreach (var review in product.Reviews.OrderByDescending(x => x.WritingDate).Take(reviewsCount))
+                {
+                    <div class="review">
+                        <div class="row justify-content-around">
+                            <div class="review-email">
+                                @review.Email
+                            </div>
+                            <div class="review-stars">
+                                @{
+
+                                    int d = 0;
+                                    for (int j = 0; j < review.Stars; j++)
+                                    {
+                                        int coutEmptyStars = j;
+                                        <i class="fas fa-star text-yellow"></i>
+                                        d++;
+                                    }
+                                    for (; d < 5; d++)
+                                    {
+                                        int coutStars = d;
+                                        <i class="far fa-star"></i>
+                                    }
+
+                                }
+                            </div>
+                            <div class="review-email">
+                                @review.WritingDate
+                            </div>
+                        </div>
+                        <div class="review-comment">
+                            @review.Comment
+                        </div>
+                        <div class="review-advantages">
+                            <span class="text-green">Advantages:</span> @review.Advantages
+                        </div>
+                        <div class="review-disadvantages">
+                            <span class="text-danger">Disadvantages:</span> @review.Disadvantages
+                        </div>
+
+                    </div>
+                }
+                @if ((product.Reviews.Count - reviewsCount) > 0)
+                {
+                    <div class="w-100 justify-content-center mt-3">
+                        <button type="button" class="btn" @onclick="ShowMoreReviews">Show More</button>
+                    </div>
+                }
+
+            </div>
+        </div>
+    }
+</div>
+
+
+
+@code {
+        string[] BreadcrumbItems = new string[] { "Home", "Shop", "Product" };
+
+    [Parameter]
+    public int ProductID { get; set; }
+
+    [CascadingParameter]
+    private Task<AuthenticationState> authenticationStateTask { get; set; }
+
+    IProductBLL product;
+    IOrderBLL currentOrder;
+    IWishBLL wish;
+    List<IWishBLL> wishes = new List<IWishBLL>();
+    Review userReview;
+    int reviewsCount = 10;
+    string userEmail;
+    List<IProductBLL> relatedProducts;
+
+
+    public bool isAuthenticatedUser = false;
+    public string userID;
+    bool quickViewIsClicked = false;
+    bool reviewSending = false;
+
+    public bool wishIconIsClicked = false;
+    public bool cartIconIsClicked = false;
+
+    string activeWishIcon => wishIconIsClicked ? "active" : null;
+
+    int slideIndex = 1;
+    int slides = 0;
+    double starsAverage = 0;
+    List<ProductImage> images;
+    List<string> slidesActiveStyle;
+    List<string> dotsActiveClass;
+    string navigationClass = "show";
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var authState = await authenticationStateTask;
+            var user = authState.User;
+
+            if (user.Identity.IsAuthenticated && user.IsInRole("Customer"))
+            {
+                isAuthenticatedUser = true;
+                userID = _userManager.GetUserId(user);
+                userEmail = (await _userManager.GetUserAsync(user)).Email;
+                currentOrder = _orderService.GetOrderByCustomerID(userID);
+            }
+
+            if (currentOrder == null)
+                currentOrder = new OrderBLL() { CustomerID = userID };
+
+            if (currentOrder.OrderDetails == null)
+                currentOrder.OrderDetails = new List<OrderDetailBLL>();
+
+
+            if (ProductID != 0)
+                product = _productService.GetWithProductDetailsAndReviewsByProductID(ProductID);
+
+            if (userID != null)
+                wishes = _wishService.GetAllByCustomerID(userID).ToList();
+
+
+            if (wishes.FirstOrDefault(x => x.ProductID == product.ProductID) != null)
+            {
+                wishIconIsClicked = true;
+            }
+            else
+            {
+                wishIconIsClicked = false;
+            }
+            if (currentOrder.OrderDetails.FirstOrDefault(x => x.ProductID == product.ProductID) != null)
+            {
+                cartIconIsClicked = true;
+            }
+            else { cartIconIsClicked = false; }
+
+
+            userReview = new Review() { Email = userEmail };
+
+
+            _dataNotificationService.OnChange += HandleChangesInCartOrWishModals;
+
+            ChangeImages();
+
+
+
+            relatedProducts = (await _productService.GetByProductFirmAsync(product.ProductFirm)).ToList();
+
+
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error");
+        }
+
+    }
+
+
+
+    public void AddWish(IProductBLL product)
+    {
+        try
+        {
+            var wish = new WishBLL() { ProductID = product.ProductID, CustomerID = userID };
+            _wishService.Add(wish);
+
+            WishHasChanged(userID);
+
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error");
+        }
+
+    }
+
+    public void DeleteWish(IProductBLL product)
+    {
+        try
+        {
+            _wishService.DeleteByProductAndCustomerIDs(product.ProductID, userID);
+
+            WishHasChanged(userID);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error");
+        }
+
+    }
+
+    public void AddProductToCart(IProductBLL product)
+    {
+        try
+        {
+            OrderDetailBLL orderDetail;
+
+            var totalPrice = Math.Round(product.UnitPrice - ((product.UnitPrice / (decimal)100) * (decimal)product.Discount), 2);
+
+            orderDetail = new OrderDetailBLL() { Price = product.UnitPrice, Quantity = 1, Discount = product.Discount, Total = totalPrice, ProductID = product.ProductID };
+
+            if (currentOrder.OrderID == 0)
+            {
+                currentOrder.OrderDetails.Add(orderDetail);
+                _orderService.Add(currentOrder);
+            }
+            else
+            {
+                orderDetail.OrderID = currentOrder.OrderID;
+                _orderDetailService.Add(orderDetail);
+            }
+
+
+            OrderDetailHasChanged(userID);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error");
+        }
+
+    }
+
+    public async void RemoveProductFromCart(IOrderDetailBLL orderDetail)
+    {
+        try
+        {
+            if (orderDetail != null)
+                await _orderDetailService.Delete(orderDetail.OrderDetailID);
+
+            OrderDetailHasChanged(userID);
+
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error");
+        }
+
+    }
+
+
+    public void ShowMoreReviews()
+    {
+
+        reviewsCount += 20;
+        StateHasChanged();
+    }
+
+    public void SendReview()
+    {
+        try
+        {
+            userReview.WritingDate = DateTime.Now;
+            userReview.ProductID = product.ProductID;
+            _reviewService.Add(_mapper.Map<IReviewBLL>(userReview));
+            reviewSending = true;
+            product.Reviews.Add(_mapper.Map<ReviewBLL>(userReview));
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error");
+        }
+
+    }
+
+    public void ChangeReviewStars(int stars)
+    {
+        userReview.Stars = stars;
+        StateHasChanged();
+    }
+
+
+    public void HandleChangesInCartOrWishModals()
+    {
+        try
+        {
+            if (userID != null && ProductID != 0)
+            {
+                currentOrder = _orderService.GetOrderByCustomerID(userID);
+
+                wish = _wishService.GetByProductAndCustomerID(ProductID, userID);
+
+                if (wish != null)
+                {
+                    wishIconIsClicked = true;
+                }
+                else
+                {
+                    wishIconIsClicked = false;
+                }
+                if (currentOrder.OrderDetails.FirstOrDefault(x => x.ProductID == product.ProductID) != null)
+                {
+                    cartIconIsClicked = true;
+                }
+                else { cartIconIsClicked = false; }
+
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error");
+        }
+
+    }
+
+    public void Dispose()
+    {
+        try
+        {
+            _dataNotificationService.OnChange -= HandleChangesInCartOrWishModals;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error");
+        }
+
+    }
+
+
+    public void HandleWishIconClick()
+    {
+        try
+        {
+            if (isAuthenticatedUser)
+            {
+                wishIconIsClicked = !wishIconIsClicked;
+                if (wishIconIsClicked)
+                {
+                    var wish = new WishBLL() { ProductID = product.ProductID, CustomerID = userID };
+                    _wishService.Add(wish);
+                }
+                else
+                {
+                    _wishService.DeleteByProductAndCustomerIDs(product.ProductID, userID);
+
+                }
+
+                WishHasChanged(userID);
+            }
+            else
+            {
+                NavigationManager.NavigateTo("/Identity/Account/Login", true);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error");
+        }
+
+    }
+
+    public void HandleAddCartIconClick()
+    {
+        try
+        {
+            if (isAuthenticatedUser)
+            {
+                cartIconIsClicked = !cartIconIsClicked;
+
+                OrderDetailBLL orderDetail;
+
+                var totalPrice = Math.Round(product.UnitPrice - ((product.UnitPrice / (decimal)100) * (decimal)product.Discount), 2);
+
+                orderDetail = new OrderDetailBLL() { Price = product.UnitPrice, Quantity = 1, Discount = product.Discount, Total = totalPrice, ProductID = product.ProductID };
+
+                if (currentOrder.OrderID == 0)
+                {
+                    currentOrder.OrderDetails.Add(orderDetail);
+                    _orderService.Add(currentOrder);
+                }
+                else
+                {
+                    orderDetail.OrderID = currentOrder.OrderID;
+                    _orderDetailService.Add(orderDetail);
+                }
+
+                OrderDetailHasChanged(userID);
+            }
+            else
+            {
+                NavigationManager.NavigateTo("/Identity/Account/Login", true);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error");
+        }
+
+    }
+
+
+    public async void HandleRemoveCartIconClick()
+    {
+        try
+        {
+            if (isAuthenticatedUser)
+            {
+                cartIconIsClicked = !cartIconIsClicked;
+
+                var orderDetail = currentOrder.OrderDetails.FirstOrDefault(x => x.ProductID == product.ProductID);
+
+                if (orderDetail != null)
+                    await _orderDetailService.Delete(orderDetail.OrderDetailID);
+
+                OrderDetailHasChanged(userID);
+            }
+            else
+            {
+                NavigationManager.NavigateTo("/Identity/Account/Login", true);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error");
+        }
+
+    }
+
+
+
+    public void ChangeImages()
+    {
+        try
+        {
+            slides = 0;
+
+            images = new List<ProductImage>();
+            slidesActiveStyle = new List<string>();
+            dotsActiveClass = new List<string>();
+
+            if (product != null && product.MainPicture != null)
+            {
+                images.Add(new ProductImage() { Image = ParseToImage(product.MainPicture) });
+                slidesActiveStyle.Add("display:none;");
+                dotsActiveClass.Add("");
+            }
+
+            if (product != null && product.ProductDetails != null)
+            {
+                foreach (var productDetail in product.ProductDetails)
+                {
+                    if (productDetail.Picture != null)
+                    {
+                        images.Add(new ProductImage()
+                        {
+                            Image = ParseToImage(productDetail.Picture),
+                            Color = productDetail.Color,
+                            Material = productDetail.Material
+                        });
+                        slidesActiveStyle.Add("display:none;");
+                        dotsActiveClass.Add("");
+                    }
+                }
+            }
+
+            slides = images.Count;
+            if (slides > 0)
+            {
+                ShowSlide(slideIndex);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error");
+        }
+
+    }
+
+
+    public void ChangeStars()
+    {
+        try
+        {
+            if (product != null && product.Reviews != null && product.Reviews.Count > 0)
+                starsAverage = product.Reviews.Average(s => s.Stars);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error");
+        }
+
+    }
+
+    public void PlusSlide(int n)
+    {
+        try
+        {
+            slideIndex += n;
+
+            if (slideIndex > slides) slideIndex = 1;
+            if (slideIndex < 1) slideIndex = slides;
+
+            ShowSlide(slideIndex);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error");
+        }
+
+    }
+
+    public void CurrentSlide(int n)
+    {
+        ShowSlide(slideIndex = n);
+    }
+
+    public void ShowSlide(int n)
+    {
+        try
+        {
+            for (int i = 0; i < slides; i++)
+            {
+                slidesActiveStyle[i] = "display:none;";
+                dotsActiveClass[i] = "";
+            }
+
+            slidesActiveStyle[slideIndex - 1] = "display:block;";
+            dotsActiveClass[slideIndex - 1] = " active";
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error");
+        }
+
+    }
+
+
+    public string ParseToImage(byte[] byteImage)
+    {
+        try
+        {
+            string base64 = Convert.ToBase64String(byteImage);
+            string imgSrc = String.Format("data:image/gif;base64,{0}", base64);
+
+            return imgSrc;
+        }
+
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error");
+            return "";
+        }
+
+    }
+
+    public void OrderDetailHasChanged(string userID)
+    {
+        try
+        {
+            if (userID != null)
+                currentOrder = _orderService.GetOrderByCustomerID(userID);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error");
+        }
+
+    }
+
+    public void WishHasChanged(string userID)
+    {
+        try
+        {
+            if (userID != null)
+                wishes = _wishService.GetAllByCustomerID(userID).ToList();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error");
+        }
+    }
+
+
+    public class ProductImage
+    {
+        public string Image { get; set; }
+        public string Color { get; set; }
+        public string Material { get; set; }
+    };
+
+}

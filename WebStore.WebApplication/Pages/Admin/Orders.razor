@@ -1,0 +1,1017 @@
+﻿@page "/admin/orders"
+@inject IJSRuntime JSRuntime;
+@inject IOrderService _orderService;
+@inject IPaymentService _paymentService;
+@inject ICustomerService _customerService;
+@inject IShipperService _shipperService;
+@inject IOrderDetailService _orderDetailService;
+@inject IMapper _mapper;
+@attribute [Authorize(Roles = "Administrator")]
+@inject ILogger<Orders> Logger
+<div class="container-fluid margin-top admin-style">
+    <MainPageTitle Title="Orders" />
+
+    <Breadcrumb Items="BreadcrumbItems" />
+
+    <div class="container">
+
+
+
+        @if (orders == null)
+        {
+            <div class="d-flex justify-content-center">
+
+                <div class="small-lds-ellipsis"><div></div><div></div><div></div><div></div></div>
+
+            </div>
+
+        }
+        else
+        {
+
+            <div class="row ">
+
+                <div class="mb-4  col-sm-6 col-md-4 ">
+                    <button class="btn btn-outline-primary w-100" @onclick="OnAddClick"> ADD ORDER</button>
+                </div>
+
+                <div class="mb-4  col-sm-6 col-md-4">
+                    <button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" @onclick="ToggleSearchDropdown"><span class="d-none d-lg-inline-block">Choose operation field:</span> @searchBy</button>
+                    <div class="dropdown-menu @searchDropdownMenuShowClass">
+                        @foreach (var parameter in copyParameters)
+                        {
+                            <div class="dropdown-item" @onclick="(() => ChangeSearchBy(parameter))"> @parameter</div>
+                        }
+
+                    </div>
+                </div>
+
+
+                <div class="col-sm-6 col-md-4 mb-4">
+                    <button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" @onclick="ToggleOrderDropdown"><span class="d-none d-lg-inline-block">Choose order:</span> @orderType</button>
+                    <div class="dropdown-menu @orderDropdownMenuShowClass">
+                        <div class="dropdown-item" @onclick='(() => ChangeOderType("Ascending Order"))'> Ascending Order</div>
+                        <div class="dropdown-item" @onclick='(() => ChangeOderType("Descending Order"))'> Descending Order</div>
+                    </div>
+                </div>
+
+
+                <div class="mb-4 col-sm-6 col-md-4">
+                    <button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" @onclick="ToggleProductsPerPageDropdown">Orders per page: @productsPerPage</button>
+                    <div class="dropdown-menu @productsPerPageDropdownMenuShowClass">
+                        <div class="dropdown-item" @onclick='(() => ChangeProductsPerPage(10))'> 10</div>
+                        <div class="dropdown-item" @onclick='(() => ChangeProductsPerPage(20))'> 20</div>
+                        <div class="dropdown-item" @onclick='(() => ChangeProductsPerPage(50))'> 50</div>
+                        <div class="dropdown-item" @onclick='(() => ChangeProductsPerPage(100))'> 100</div>
+                        <form @onsubmit='(() => ChangeProductsPerPage(int.TryParse(inputProductsPerPage, out int n)==true? n: productsPerPage))'>
+                            <input class="form-control" placeholder="Type and press enter " @bind="inputProductsPerPage" @bind:event="oninput" />
+                        </form>
+                    </div>
+                </div>
+                <div class="col-sm-6 mb-4  col-md-4 ">
+                    <div class="input-group">
+                        <div class="input-group-prepend">
+                            <div class="input-group-text">
+                                <i class="fas fa-search"></i>
+                            </div>
+                        </div>
+                        <input type="text" placeholder="Type to search" class="form-control" @bind="searchQuery" @bind:event="oninput" @onkeyup="@HandleKeyUp" />
+                    </div>
+
+                </div>
+                <div class="col-sm-6 col-md-4 col-lg-3 mb-4">
+                    <div class="data-card-pagination">
+                        <div class="row">
+                            @if (currentPage != 1)
+                            {
+                                <div class="col-2 arrow" @onclick="() => ChangeCurrentPage(currentPage - 1)">
+                                    <i class="fas fa-chevron-left"></i>
+                                </div>
+                            }
+                            else
+                            {<div class="col-2">
+                                </div>
+                            }
+                            <div class="col-4">
+                                <form @onsubmit='(() => ChangeCurrentPage(int.TryParse(inputCurrentPage, out int n)==true? n: currentPage))'>
+                                    <input class="form-control w-100" @bind="inputCurrentPage" @bind:event="oninput" />
+                                </form>
+                            </div>
+                            <div class="col-2 from-style">
+                                <span>from</span>
+                            </div>
+                            <div class="col-2">
+
+                                <span>@totalPages</span>
+                            </div>
+                            @if (currentPage != totalPages)
+                            {
+                                <div class="col-2 arrow" @onclick="()=>ChangeCurrentPage(currentPage+1)">
+                                    <i class="fas fa-chevron-right"></i>
+                                </div>
+                            }
+                            else
+                            {<div class="col-2">
+                                </div>
+                            }
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+            if (IsSearching)
+            {
+                <div class="d-flex justify-content-center">
+
+                    <div class="small-lds-ellipsis"><div></div><div></div><div></div><div></div></div>
+
+                </div>
+            }
+            else
+            {
+                <div class="row">
+                    @foreach (var order in orders)
+                    {
+                        var subTitle = GetPropValue(order, searchBy) == null ? "NULL" : GetPropValue(order, searchBy).ToString();
+                        <div class="col-sm-6 col-md-4 mb-3">
+                            <DataCard TItem="IOrderBLL"
+                                      Title="@order.PaymentDate.ToString()"
+                                      SubTitle="@subTitle"
+                                      Color="DataCard<IOrderBLL>.Colors.purple"
+                                      ItemData="order"
+                                      OnEditClick="OnEditClick"
+                                      OnDeleteClick="OnDeleteClick">
+                                <i class="fas fa-user"></i>
+                            </DataCard>
+                        </div>
+                    }
+
+                    @if (orders.Count == 0)
+                    {
+                        <p>No results.</p>
+                    }
+
+
+                </div>
+            }
+            <div class="d-flex justify-content-center mt-4">
+                <div class="data-card-pagination">
+                    <div class="row">
+                        @if (currentPage > 1)
+                        {
+                            <div class="col-2 arrow " @onclick="() => ChangeCurrentPage(currentPage - 1)">
+                                <i class="fas fa-chevron-left"></i>
+                            </div>
+                        }
+                        else
+                        {<div class="col-2">
+                            </div>
+                        }
+                        <div class="col-4">
+                            <form @onsubmit='(() => ChangeCurrentPage(int.TryParse(inputCurrentPage, out int n)==true? n: currentPage))'>
+                                <input class="form-control w-100" @bind="inputCurrentPage" @bind:event="oninput" />
+                            </form>
+                        </div>
+                        <div class="col-2 from-style">
+                            <span>from</span>
+                        </div>
+                        <div class="col-2">
+                            <span>@totalPages</span>
+                        </div>
+                        @if (currentPage != totalPages)
+                        {
+                            <div class="col-2 arrow" @onclick="()=>ChangeCurrentPage(currentPage+1)">
+                                <i class="fas fa-chevron-right"></i>
+                            </div>
+                        }
+                        else
+                        {<div class="col-2">
+                            </div>
+                        }
+
+                    </div>
+                </div>
+            </div>
+        }
+
+
+    </div>
+
+    <DataModal Title="Edit Order" DataModalIsClicked="editModalIsClicked" MaxWigth="800px">
+
+        @if (currentOrder != null)
+        {
+            <EditForm class="container" Model="@currentOrder" OnValidSubmit="@EditCurentOrder">
+                <div class="data-modal-body row mb-4">
+                    <DataAnnotationsValidator />
+                    <div class="form-group col-md-6">
+                        <label for="ShipperID" class="control-label">ShipperID: </label>
+                        <InputText id="ShipperID" @bind-Value="orderID" disabled class="form-control" />
+                        <ValidationMessage For="@(() => currentOrder.OrderID)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="CustomerID">CustomerID: </label>
+                        <InputSelect id="CustomerID" @bind-Value="@customerID" class="form-control">
+                            <option value="">Select Customer...</option>
+
+                            @foreach (var customer in customers)
+                                {
+                                    var customerName = customer.FirstName + " " + customer.LastName;
+                                <option value="@customer.CustomerID.ToString()">@customer.FirstName  </option>
+                                }
+                            /**/
+
+                        </InputSelect>
+                    </div>
+
+                    <div class="form-group col-md-6">
+                        <label for="ShipperID">ShipperID: </label>
+                        <InputSelect id="ShipperID" @bind-Value="@shipperID" class="form-control">
+                            <option value="">Select Shipper...</option>
+                            @foreach (var shipper in shippers)
+                                {
+                                <option value="@shipper.ShipperID.ToString()">@shipper.CompanyName</option>
+                                }
+                            /**/
+
+                        </InputSelect>
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="PaymentID">PaymentID: </label>
+                        <InputSelect id="PaymentID" @bind-Value="@paymentID" class="form-control">
+                            <option value="">Select Payment...</option>
+                            @foreach (var payment in payments)
+                                {
+                                <option value="@payment.PaymentID.ToString()">@payment.PaymentType</option>
+                                }
+                            /**/
+
+                        </InputSelect>
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="OrderDate" class="control-label">OrderDate: </label>
+                        <InputDate id="OrderDate" @bind-Value="currentOrder.OrderDate" class="form-control" />
+                        <ValidationMessage For="@(() => currentOrder.OrderDate)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="ShipDate" class="control-label">ShipDate: </label>
+                        <InputDate id="ShipDate" @bind-Value="currentOrder.ShipDate" class="form-control" />
+                        <ValidationMessage For="@(() => currentOrder.ShipDate)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="RequiredDate" class="control-label">RequiredDate: </label>
+                        <InputDate id="RequiredDate" @bind-Value="currentOrder.RequiredDate" class="form-control" />
+                        <ValidationMessage For="@(() => currentOrder.RequiredDate)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="PaymentDate" class="control-label">PaymentDate: </label>
+                        <InputDate id="PaymentDate" @bind-Value="currentOrder.PaymentDate" class="form-control" />
+                        <ValidationMessage For="@(() => currentOrder.PaymentDate)" />
+                    </div>
+
+                    <div class="form-group col-md-6">
+                        <label for="Paid" class="control-label">Paid: </label>
+                        <InputNumber id="Paid" @bind-Value="currentOrder.Paid" class="form-control" />
+                        <ValidationMessage For="@(() => currentOrder.Paid)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="Fulfilled" class="control-label">Fulfilled: </label>
+                        <InputCheckbox id="Fulfilled" @bind-Value="currentOrder.Fulfilled" class="form-control" />
+                        <ValidationMessage For="@(() => currentOrder.Fulfilled)" />
+                    </div>
+
+
+                    <div class="p-3 row">
+                        Order details:
+                    </div>
+                    @if (currentOrder.OrderDetails != null)
+                    {
+                        @foreach (var orderDetail in currentOrder.OrderDetails)
+                        {
+                            <div class="row">
+                                <div class="form-group col-md-6">
+                                    <label for="OrderDetailID" class="control-label">OrderDetailID: </label>
+                                    <InputNumber id="OrderDetailID" @bind-Value="orderDetail.OrderDetailID" disabled class="form-control" />
+                                </div>
+                                <div class="form-group col-md-6">
+                                    <label for="OrderID" class="control-label">OrderID: </label>
+                                    <InputNumber id="OrderID" @bind-Value="orderDetail.OrderID" disabled class="form-control" />
+                                </div>
+                                <div class="form-group col-md-6">
+                                    <label for="ProductID" class="control-label">ProductID: </label>
+                                    <InputNumber id="ProductID" @bind-Value="orderDetail.ProductID" disabled class="form-control" />
+                                </div>
+                                <div class="form-group col-md-6">
+                                    <label for="ProductDetailID" class="control-label">ProductDetailID: </label>
+                                    <InputNumber id="ProductDetailID" @bind-Value="orderDetail.ProductDetailID" disabled class="form-control" />
+                                </div>
+                                <div class="form-group col-md-6">
+                                    <label for="Price" class="control-label">Price: </label>
+                                    <InputNumber id="Price" @bind-Value="orderDetail.Price" disabled class="form-control" />
+                                </div>
+                                <div class="form-group col-md-6">
+                                    <label for="Quantity" class="control-label">Quantity: </label>
+                                    <InputNumber id="Quantity" @bind-Value="orderDetail.Quantity" disabled class="form-control" />
+                                </div>
+                                <div class="form-group col-md-6">
+                                    <label for="Discount" class="control-label">Discount: </label>
+                                    <InputNumber id="Discount" @bind-Value="orderDetail.Discount" disabled class="form-control" />
+                                </div>
+                                <div class="form-group col-md-6">
+                                    <label for="Total" class="control-label">Total: </label>
+                                    <InputNumber id="Total" @bind-Value="orderDetail.Total" disabled class="form-control" />
+                                </div>
+                            </div><div class="row">
+                                <div class="data-modal-footer">
+                                    <button type="button" class="btn btn-danger" @onclick="()=>DeleteOrderDetail(orderDetail)">Delete</button>
+                                </div>
+                            </div>
+                        }
+                    }
+                </div>
+                <div class="data-modal-footer">
+                    <button type="submit" class="btn btn-primary mr-3">Save Changes</button>
+                    <button type="button" class="btn btn-secondary" @onclick="CloseEditModal">Close</button>
+                </div>
+
+            </EditForm>
+        }
+    </DataModal>
+
+    <DataModal Title="Add Order" DataModalIsClicked="addModalIsClicked" MaxWigth="800px">
+
+        @if (currentOrder != null)
+        {
+            <EditForm class="container" Model="@currentOrder" OnValidSubmit="@AddCurentOrder">
+                <div class="data-modal-body row mb-4">
+                    <DataAnnotationsValidator />
+                    <div class="form-group col-md-6">
+                        <label for="ShipperID" class="control-label">ShipperID: </label>
+                        <InputText id="ShipperID" @bind-Value="@orderID" disabled class="form-control" />
+                        <ValidationMessage For="@(() => currentOrder.OrderID)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="CustomerID">CustomerID: </label>
+                        <InputSelect id="CustomerID" @bind-Value="@customerID" class="form-control">
+                            <option value="">Select Customer...</option>
+                            @foreach (var customer in customers)
+                                {
+                                    var customerName = customer.FirstName + " " + customer.LastName;
+                                <option value="@customer.CustomerID.ToString()">@customerName </option>
+                                }
+                            /**/
+
+                        </InputSelect>
+                    </div>
+
+                    <div class="form-group col-md-6">
+                        <label for="ShipperID">ShipperID: </label>
+                        <InputSelect id="ShipperID" @bind-Value="@shipperID" class="form-control">
+                            <option value="">Select Shipper...</option>
+                            @foreach (var shipper in shippers)
+                                {
+                                <option value="@shipper.ShipperID.ToString()">@shipper.CompanyName</option>
+                                }
+                            /**/
+
+                        </InputSelect>
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="PaymentID">PaymentID: </label>
+                        <InputSelect id="PaymentID" @bind-Value="paymentID" class="form-control">
+                            <option value="">Select Payment...</option>
+
+                            @foreach (var payment in payments)
+                                {
+                                <option value="@payment.PaymentID.ToString()">@payment.PaymentType</option>
+                                }
+                            /**/
+
+                        </InputSelect>
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="OrderDate" class="control-label">OrderDate: </label>
+                        <InputDate id="OrderDate" @bind-Value="currentOrder.OrderDate" class="form-control" />
+                        <ValidationMessage For="@(() => currentOrder.OrderDate)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="ShipDate" class="control-label">ShipDate: </label>
+                        <InputDate id="ShipDate" @bind-Value="currentOrder.ShipDate" class="form-control" />
+                        <ValidationMessage For="@(() => currentOrder.ShipDate)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="RequiredDate" class="control-label">RequiredDate: </label>
+                        <InputDate id="RequiredDate" @bind-Value="currentOrder.RequiredDate" class="form-control" />
+                        <ValidationMessage For="@(() => currentOrder.RequiredDate)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="PaymentDate" class="control-label">PaymentDate: </label>
+                        <InputDate id="PaymentDate" @bind-Value="currentOrder.PaymentDate" class="form-control" />
+                        <ValidationMessage For="@(() => currentOrder.PaymentDate)" />
+                    </div>
+
+                    <div class="form-group col-md-6">
+                        <label for="Paid" class="control-label">Paid: </label>
+                        <InputNumber id="Paid" @bind-Value="currentOrder.Paid" class="form-control" />
+                        <ValidationMessage For="@(() => currentOrder.Paid)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="Fulfilled" class="control-label">Fulfilled: </label>
+                        <InputCheckbox id="Fulfilled" @bind-Value="currentOrder.Fulfilled" class="form-control" />
+                        <ValidationMessage For="@(() => currentOrder.Fulfilled)" />
+                    </div>
+                </div>
+                <div class="data-modal-footer">
+                    <button type="submit" class="btn btn-primary mr-3">Save </button>
+                    <button type="button" class="btn btn-secondary" @onclick="CloseAddModal">Close</button>
+                </div>
+
+            </EditForm>
+        }
+    </DataModal>
+
+    <DataModal Title="Delete Order" DataModalIsClicked="deleteModalIsClicked" MaxWigth="400px">
+        <div class="p-3">
+            You are sure you want to delete?
+        </div>
+        <div class="data-modal-footer">
+            <button type="button" class="btn btn-danger mr-3" @onclick="DeleteCurentOrder"> Yes</button>
+            <button type="button" class="btn btn-secondary" @onclick="CloseDeleteModal">No</button>
+        </div>
+
+    </DataModal>
+
+
+</div>
+
+
+
+
+
+
+
+@code {
+    string[] BreadcrumbItems = new string[] { "Home", "Admin", "Orders" };
+
+    bool serchDropdownMenuIsClicked = false;
+    bool orderDropdownMenuIsClicked = false;
+    bool productsPerPageDropdownMenuIsClicked = false;
+    bool editModalIsClicked = false;
+    bool addModalIsClicked = false;
+    bool deleteModalIsClicked = false;
+
+    string productsPerPageDropdownMenuShowClass => productsPerPageDropdownMenuIsClicked ? "show" : null;
+    string searchDropdownMenuShowClass => serchDropdownMenuIsClicked ? "show" : null;
+    string orderDropdownMenuShowClass => orderDropdownMenuIsClicked ? "show" : null;
+
+    int productsPerPage;
+    int lastProductsPerPage;
+    string inputProductsPerPage;
+
+    string searchBy;
+
+    string orderType;
+
+    string searchQuery = "";
+    string lastSearchQuery = "";
+
+    string inputCurrentPage;
+    int currentPage;
+    int totalPages;
+
+    List<string> copyParameters;
+    bool IsSearching = false;
+    CancellationTokenSource cancelToken = new CancellationTokenSource();
+
+    private System.Timers.Timer inputTimer;
+
+    List<IOrderBLL> orders = null;
+    List<IOrderBLL> storedOrders = null;
+
+    Order currentOrder;
+
+    string orderID;
+    string paymentID;
+    string shipperID;
+    string customerID;
+
+    List<IPaymentBLL> payments;
+    List<ICustomerBLL> customers;
+    List<IShipperBLL> shippers;
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            orderType = "Ascending Order";
+            productsPerPage = 10;
+
+
+            payments = (await _paymentService.GetAllAsync()).ToList();
+            customers = (await _customerService.GetAllAsync()).ToList();
+            shippers = (await _shipperService.GetAllAsync()).ToList();
+
+            storedOrders = (await _orderService.GetOrdersWithDetailsAsync()).ToList();
+            orders = storedOrders.Take(productsPerPage).OrderBy(x => x.OrderID).ToList();
+
+            copyParameters = typeof(Order).GetProperties().Select(p => p.Name).Take(10).ToList();
+
+            searchBy = copyParameters[0];
+
+
+            currentPage = 1;
+            inputCurrentPage = "1";
+            totalPages = storedOrders.Count() / productsPerPage;
+            if ((storedOrders.Count() - (totalPages * productsPerPage)) != 0)
+                totalPages++;
+
+            if (totalPages == 0) totalPages = 1;
+
+            inputTimer = new System.Timers.Timer(500);
+            inputTimer.Elapsed += OnUserFinish;
+            inputTimer.AutoReset = false;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+    }
+
+    public async void DeleteOrderDetail(OrderDetail orderDetail)
+    {
+        try
+        {
+             await _orderDetailService.Delete(orderDetail.OrderDetailID);
+        currentOrder.OrderDetails.Remove(orderDetail);
+        StateHasChanged();
+        }
+         catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+       
+    }
+
+    public void OnEditClick(IOrderBLL order)
+    {
+        try
+        {
+            currentOrder = _mapper.Map<Order>(order);
+            editModalIsClicked = !editModalIsClicked;
+
+            orderID = currentOrder.OrderID.ToString();
+            shipperID = currentOrder.ShipperID?.ToString();
+            customerID = currentOrder.CustomerID;
+            paymentID = currentOrder.PaymentID?.ToString();
+
+
+
+
+            JSRuntime.InvokeVoidAsync("Body.Overflow", !editModalIsClicked);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+
+    }
+
+    public async void EditCurentOrder()
+    {
+        try
+        {
+            if (!string.IsNullOrWhiteSpace(shipperID)) currentOrder.ShipperID = int.Parse(shipperID);
+            else currentOrder.ShipperID = null;
+            if (!string.IsNullOrWhiteSpace(customerID)) currentOrder.CustomerID = customerID;
+            else currentOrder.CustomerID = null;
+            if (!string.IsNullOrWhiteSpace(paymentID)) currentOrder.PaymentID = int.Parse(paymentID);
+            else currentOrder.PaymentID = null;
+
+            editModalIsClicked = false;
+            _orderService.Update(_mapper.Map<IOrderBLL>(currentOrder));
+            storedOrders = (await _orderService.GetOrdersWithDetailsAsync()).ToList();
+            HandleKeyUp();
+            await JSRuntime.InvokeVoidAsync("Body.Overflow", true);
+        }
+         catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+    }
+
+    public void CloseEditModal()
+    {
+        try
+        {
+            editModalIsClicked = !editModalIsClicked;
+
+            JSRuntime.InvokeVoidAsync("Body.Overflow", true);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+
+    }
+
+    public void OnAddClick()
+    {
+        try
+        {
+            currentOrder = new Order();
+
+            addModalIsClicked = !addModalIsClicked;
+
+            orderID = currentOrder.OrderID.ToString();
+            shipperID = currentOrder.ShipperID?.ToString();
+            customerID = currentOrder.CustomerID;
+            paymentID = currentOrder.PaymentID?.ToString();
+
+            JSRuntime.InvokeVoidAsync("Body.Overflow", !addModalIsClicked);
+
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+    }
+
+    public void CloseAddModal()
+    {
+        try
+        {
+            addModalIsClicked = !addModalIsClicked;
+
+            JSRuntime.InvokeVoidAsync("Body.Overflow", true);
+        }
+         catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+
+    }
+
+    public async void AddCurentOrder()
+    {
+        try
+        {
+            if (!string.IsNullOrWhiteSpace(shipperID)) currentOrder.ShipperID = int.Parse(shipperID);
+            else currentOrder.ShipperID = null;
+            if (!string.IsNullOrWhiteSpace(customerID)) currentOrder.CustomerID = customerID;
+            else currentOrder.CustomerID = null;
+            if (!string.IsNullOrWhiteSpace(paymentID)) currentOrder.PaymentID = int.Parse(paymentID);
+            else currentOrder.PaymentID = null;
+
+            _orderService.Add(_mapper.Map<IOrderBLL>(currentOrder));
+            addModalIsClicked = false;
+            storedOrders = (await _orderService.GetOrdersWithDetailsAsync()).ToList();
+            HandleKeyUp();
+            await JSRuntime.InvokeVoidAsync("Body.Overflow", true);
+        }
+         catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+    }
+
+    public void OnDeleteClick(IOrderBLL order)
+    {
+        try
+        {
+            currentOrder = _mapper.Map<Order>(order);
+            deleteModalIsClicked = !deleteModalIsClicked;
+
+            orderID = currentOrder.OrderID.ToString();
+            shipperID = currentOrder.ShipperID?.ToString();
+            customerID = currentOrder.CustomerID;
+            paymentID = currentOrder.PaymentID?.ToString();
+
+            JSRuntime.InvokeVoidAsync("Body.Overflow", !deleteModalIsClicked);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+    }
+    public async void DeleteCurentOrder()
+    {
+        try
+        {
+            await _orderService.Delete(currentOrder.OrderID);
+            deleteModalIsClicked = false;
+            storedOrders = (await _orderService.GetOrdersWithDetailsAsync()).ToList();
+            HandleKeyUp();
+            await JSRuntime.InvokeVoidAsync("Body.Overflow", true);
+
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+    }
+
+    public void CloseDeleteModal()
+    {
+        try
+        {
+            deleteModalIsClicked = !deleteModalIsClicked;
+
+            JSRuntime.InvokeVoidAsync("Body.Overflow", true);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+
+    }
+
+    public void ToggleSearchDropdown()
+    {
+        serchDropdownMenuIsClicked = !serchDropdownMenuIsClicked;
+        orderDropdownMenuIsClicked = false;
+        productsPerPageDropdownMenuIsClicked = false;
+    }
+
+    public void ToggleOrderDropdown()
+    {
+        orderDropdownMenuIsClicked = !orderDropdownMenuIsClicked;
+        serchDropdownMenuIsClicked = false;
+        productsPerPageDropdownMenuIsClicked = false;
+    }
+
+    public void ToggleProductsPerPageDropdown()
+    {
+        productsPerPageDropdownMenuIsClicked = !productsPerPageDropdownMenuIsClicked;
+        orderDropdownMenuIsClicked = false;
+        serchDropdownMenuIsClicked = false;
+    }
+
+    public void ChangeCurrentPage(int page)
+    {
+        try
+        {
+            if (page >= totalPages)
+            {
+                currentPage = totalPages;
+                inputCurrentPage = currentPage.ToString();
+                HandleKeyUp();
+
+                return;
+            }
+
+            if (page <= 0)
+            {
+                currentPage = 1;
+                inputCurrentPage = currentPage.ToString();
+                HandleKeyUp();
+                return;
+            }
+
+            if (currentPage != page)
+            {
+                currentPage = page;
+                inputCurrentPage = currentPage.ToString();
+                HandleKeyUp();
+                return;
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+    }
+
+    public void ChangeProductsPerPage(int productOnPage)
+    {
+        try
+        {
+            if (productsPerPage == productOnPage || productOnPage > 200) { ToggleProductsPerPageDropdown(); }
+            else
+            {
+                productsPerPage = productOnPage;
+                currentPage = 1;
+                inputCurrentPage = "1";
+                ToggleProductsPerPageDropdown();
+                HandleKeyUp();
+            }
+        }
+         catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+
+    }
+
+    public void ChangeOderType(string order)
+    {
+        try
+        {
+            if (orderType == order) { ToggleOrderDropdown(); }
+            else
+            {
+                orderType = order;
+                ToggleOrderDropdown();
+                HandleKeyUp();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+    }
+
+    public void ChangeSearchBy(string changedSearchBy)
+    {
+        try
+        {
+            if (searchBy == changedSearchBy) { ToggleSearchDropdown(); }
+            else
+            {
+                searchBy = changedSearchBy;
+                HandleKeyUp();
+                ToggleSearchDropdown();
+            }
+        }
+         catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+    }
+    public object GetPropValue(object src, string propName)
+    {
+
+        PropertyInfo propertyInfo = src.GetType().GetProperty(propName);
+
+        if (propertyInfo.PropertyType == typeof(DateTime))
+        {
+            object value = propertyInfo.GetValue(src, null);
+
+            return value;
+        }
+
+        if (propertyInfo.PropertyType == typeof(int))
+        {
+            object value = propertyInfo.GetValue(src, null);
+
+            return value == null ? 0 : value;
+        }
+
+        if (propertyInfo.PropertyType == typeof(int?))
+        {
+            object value = propertyInfo.GetValue(src, null);
+
+            return value == null ? 0 : value;
+        }
+
+        if (propertyInfo.PropertyType == typeof(double))
+        {
+            object value = propertyInfo.GetValue(src, null);
+
+            return value == null ? 0 : value;
+        }
+
+        if (propertyInfo.PropertyType == typeof(bool))
+        {
+            object value = propertyInfo.GetValue(src, null);
+
+            return value == null ? false : value;
+        }
+
+        if (propertyInfo.PropertyType == typeof(decimal))
+        {
+            object value = propertyInfo.GetValue(src, null);
+
+            return value == null ? 0 : value;
+        }
+
+        if (propertyInfo.PropertyType == typeof(float))
+        {
+            object value = propertyInfo.GetValue(src, null);
+
+            return value == null ? 0 : value;
+        }
+
+        if (propertyInfo.PropertyType == typeof(string))
+        {
+            object value = propertyInfo.GetValue(src, null);
+
+            return value == null ? "Null" : value;
+        }
+
+        return 0;
+    }
+
+    public void HandleKeyUp()
+    {
+        try
+        {
+            if (!IsSearching)
+            {
+                inputTimer.Stop();
+
+                inputTimer.Start();
+            }
+            else
+            {
+                cancelToken.Cancel(true);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+
+    }
+
+    public async void OnUserFinish(Object source, ElapsedEventArgs e)
+    {
+        try
+        {
+            await Task.Factory.StartNew(async () =>
+            {
+                try
+                {
+                    IsSearching = true;
+                    await InvokeAsync(() => StateHasChanged());
+
+                    List<IOrderBLL> totalSearchPages = null;
+
+                    if (lastSearchQuery != searchQuery)
+                    {
+                        currentPage = 1;
+                        inputCurrentPage = currentPage.ToString();
+                    }
+
+                    if (orderType == "Ascending Order")
+                    {
+                        totalSearchPages = storedOrders.Where(c => GetPropValue(c, searchBy).ToString().ToLower().Contains(searchQuery.ToLower()))
+                        .OrderBy(c => GetPropValue(c, searchBy)).ToList();
+                        orders = totalSearchPages.Skip((currentPage - 1) * productsPerPage).Take(productsPerPage).ToList();
+                    }
+
+                    else if (orderType == "Descending Order")
+                    {
+                        totalSearchPages = storedOrders.Where(c => GetPropValue(c, searchBy).ToString().ToLower().Contains(searchQuery.ToLower()))
+                        .OrderByDescending(c => GetPropValue(c, searchBy)).ToList();
+                        orders = totalSearchPages.Skip((currentPage - 1) * productsPerPage).Take(productsPerPage).ToList();
+                    }
+
+
+
+
+                    IsSearching = false;
+
+                    if (lastSearchQuery != searchQuery || lastProductsPerPage != productsPerPage)
+                    {
+                        totalPages = totalSearchPages.Count() / productsPerPage;
+                        if ((totalSearchPages.Count() - (totalPages * productsPerPage)) != 0)
+                            totalPages++;
+
+                        if (totalPages == 0) totalPages = 1;
+                    }
+
+                    lastSearchQuery = searchQuery;
+                    lastProductsPerPage = productsPerPage;
+
+                    await InvokeAsync(() => StateHasChanged());
+                }
+                catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+            }, cancelToken.Token);
+
+            cancelToken = new CancellationTokenSource();
+        }
+         catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+    }
+
+    public bool IsDateTime(string txtDate)
+    {
+        DateTime tempDate;
+        return DateTime.TryParse(txtDate, out tempDate);
+    }
+    public bool IsNumber(string txtDate)
+    {
+        double number;
+        return double.TryParse(txtDate, out number);
+    }
+}

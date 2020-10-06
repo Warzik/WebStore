@@ -1,0 +1,54 @@
+﻿@page "/"
+@namespace WebStore.WebApplication.Pages
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Simple Store</title>
+    <base href="~/" />
+    <link href="~/css/site.min.css" rel="stylesheet" />
+    <link href="~/css/fontawesome.min.css" rel="stylesheet" />
+</head>
+<body>
+    <div id="components-reconnect-modal" class="my-reconnect-modal components-reconnect-hide">
+        <div class="show">
+            <div class="description">
+                <div class="lds-ellipsis"><div></div><div></div><div></div><div></div></div>
+                <p>
+                    Loading, please wait <i class="far fa-smile"></i>
+                </p>
+            </div>
+        </div>
+        <div class="failed">
+            <div class="description">
+                <div class="lds-ellipsis"><div></div><div></div><div></div><div></div></div>
+                <p>
+                    Connection failed <i class="far fa-frown-open"></i>, please try reconnect
+                </p>
+                <button onclick="Body.SignalRReconnect()" class="reconnection-btn">Reconnect</button>
+
+            </div>
+        </div>
+        <div class="rejected">
+            <div class="description">
+                <div class="lds-ellipsis"><div></div><div></div><div></div><div></div></div>
+                <p>
+                    Connection rejected <i class="far fa-frown-open"></i>, please try reload page
+                </p>
+                <button onclick="Body.SignalRReload()" class="reconnection-btn">Reload</button>
+            </div>
+        </div>
+    </div>
+    
+
+    <app>
+        @(await Html.RenderComponentAsync<App>(RenderMode.ServerPrerendered))
+    </app>
+    <script src="~/javascript/Chart.min.js"></script>
+    <script src="~/javascript/script.js"></script>
+    <script src="_content/BlazorInputFile/inputfile.js"></script>
+    <script src="_framework/blazor.server.js"></script>
+</body>
+</html>

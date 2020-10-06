@@ -1,0 +1,779 @@
+﻿<CascadingAuthenticationState>
+    <LayoutView>
+        @using Microsoft.AspNetCore.Authorization
+        @using Microsoft.AspNetCore.Components.Authorization
+        @inject NavigationManager NavigationManager
+        @inject IJSRuntime JSRuntime
+        @inject AuthenticationStateProvider AuthenticationStateProvider
+        @inject IOrderService _orderService;
+        @inject IOrderDetailService _orderDetailService;
+        @inject IWishService _wishService;
+        @inject WebApplication.Services.DataNotificationService  _dataNotificationService;
+        @inject UserManager<ApplicationUser> _userManager;
+        @inject NavigationManager NavigationManager;
+        @inject ILogger<NavMenu> Logger
+
+        <div id="scroll-here"></div>
+
+        @* Mobile Nav *@
+        <div class="mob-tnav d-md-none">
+            <div class="tmenu-icons" @onclick="ToggleMenu">
+                <i class="fas fa-bars"></i>
+            </div>
+            <div class="logo">
+                Simple Store
+            </div>
+            <div class="tmenu-icons" @onclick="ToggleSearchMenu">
+                <i class="fas fa-search"></i>
+            </div>
+        </div>
+        <div class="mob-bnav d-md-none">
+            <div class="bmenu-icons" @onclick="ToggleHomeMenu">
+                <i class="fas fa-home "></i>
+            </div>
+            <div class="bmenu-icons" @onclick="ToggleAccountMenu">
+                <i class="fas fa-user"></i>
+            </div>
+            <div class="bmenu-icons" @onclick="ToggleWishlistMenu">
+                <i class="fas fa-heart"></i>
+            </div>
+            <div class="bmenu-icons" @onclick="ToggleCartMenu">
+                <i class="fas fa-shopping-cart"></i>
+            </div>
+            <div class="bmenu-icons" @onclick="ToggleSettingsMenu">
+                <i class="fas fa-cog"></i>
+            </div>
+        </div>
+        @* Desktop Nav  *@
+        <div class="desk-tnav d-none d-md-block">
+            <div class="container d-flex justify-content-between align-items-center py-2">
+                <div class="logo">
+                    Simple Store
+                </div>
+                <div class="nav-links d-lg-block d-none ">
+                    <NavLink class="nav-link mx-3" href="/" Match="NavLinkMatch.All">
+                        Home
+                    </NavLink>
+
+                    <NavLink class="nav-link mx-3" href="/shop">
+                        Shop
+                    </NavLink>
+
+                    <NavLink class="nav-link mx-3" href="/about">
+                        About Us
+                    </NavLink>
+
+                    <NavLink class="nav-link mx-3" href="/contact">
+                        Contact
+                    </NavLink>
+                    @if (adminIsHere)
+                    {
+                        <NavLink class="nav-link mx-3" href="/admin">
+                            Admin Panel
+                        </NavLink>
+                    }
+                    @if (supplierIsHere)
+                    {
+                        <NavLink class="nav-link mx-3" href="/supplier/products">
+                            Supplier Panel
+                        </NavLink>
+                    }
+                </div>
+
+                <div class="icons">
+                    <div class="dmenu-icons" @onclick="ToggleSearchMenu">
+                        <i class="fas fa-search"></i>
+                    </div>
+                    <div class="dmenu-icons" @onclick="ToggleAccountMenu">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <div class="dmenu-icons" @onclick="ToggleWishlistMenu">
+                        <i class="fas fa-heart"></i>
+                    </div>
+                    <div class="dmenu-icons" @onclick="ToggleCartMenu">
+                        <i class="fas fa-shopping-cart"></i>
+                    </div>
+                    <div class="dmenu-icons" @onclick="ToggleSettingsMenu">
+                        <i class="fas fa-cog"></i>
+                    </div>
+                    <div class="dmenu-icons d-lg-none" @onclick="ToggleMenu">
+                        <i class="fas fa-bars"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <div class="search-modal @searchModalOpenClass">
+            <div class="search-content  @searchModalOpenClass">
+                <div class="search-close " @onclick="ToggleSearchMenu">
+                    <i class="fa fa-times" aria-hidden="true"></i>
+                </div>
+                <div class="container">
+                    <div class="row">
+                        <div class="col-12">
+                            <form @onsubmit="Search" method="get">
+                                <input id="searchQuery" @bind="@searchQuery" placeholder="Type your keyword..." />
+                                <button type="submit"><i class="fas fa-search"></i></button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="account-modal @accountModalOpenClass">
+            <div class="account-content @accountModalOpenClass">
+                <div class="close" @onclick="ToggleAccountMenu">
+                    <i class="fa fa-times" aria-hidden="true"></i>
+                </div>
+                <div class="container h-100">
+                    <i class="fas fa-user main-user"></i>
+                    <LoginDisplay />
+                </div>
+            </div>
+        </div>
+
+        <div class="wishlist-modal @wishlistModalOpenClass">
+            <div class="wishlist-content @wishlistModalOpenClass">
+                <div class="close" @onclick="ToggleWishlistMenu">
+                    <i class="fa fa-times" aria-hidden="true"></i>
+                </div>
+                <div class="container h-100">
+                    @if (wishes != null && wishes.Count > 0)
+                    {
+                        <div class="container">
+                            <div class="content-heading">
+                                <h4 class="title">Your Wishes</h4>
+                            </div>
+                            <div class="row">
+                                @foreach (var wish in wishes)
+                                {
+                                    <div class="col-6 col-md-12 ">
+                                        <ShopCard Product="wish.Product"
+                                                  AuthenticatedUser="true"
+                                                  ActiveQuickView="false"
+                                                  Wishes="wishes"
+                                                  OrderDetails="currentOrder.OrderDetails?.ToList()"
+                                                  AddWish="AddWish"
+                                                  DeleteWish="DeleteWish"
+                                                  AddToCart="AddProductToCart"
+                                                  RemoveFromCart="RemoveProductFromCart" />
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="container h-100">
+                            <div class="empty-whishlist ">
+                                <span class="empty-text">  You have no items in your wish list.</span>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="cart-modal @cartModalOpenClass">
+            <div class="cart-content @cartModalOpenClass">
+                <div class="close" @onclick="ToggleCartMenu">
+                    <i class="fa fa-times" aria-hidden="true"></i>
+                </div>
+
+                @if (currentOrder != null && currentOrder.OrderDetails != null && currentOrder.OrderDetails.Count > 0)
+                {
+                    <div class="container">
+                        <div class="content-heading">
+                            <h4 class="title">Your Orders</h4>
+                        </div>
+
+                        <button class="btn btn-primary w-100 mb-5"> GO TO CHECKOUT</button>
+                        <div class="row">
+                            @foreach (var orderDetail in currentOrder.OrderDetails)
+                            {
+                                <div class="col-6 col-md-12 ">
+                                    <ShopCard Product="orderDetail.Product"
+                                              AuthenticatedUser="true"
+                                              ActiveQuickView="false"
+                                              Wishes="wishes"
+                                              OrderDetails="currentOrder.OrderDetails?.ToList()"
+                                              AddWish="AddWish"
+                                              DeleteWish="DeleteWish"
+                                              AddToCart="AddProductToCart"
+                                              RemoveFromCart="RemoveProductFromCart" />
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+
+                else
+                {
+                    <div class="container h-100">
+                        <div class="empty-cart">
+                            <span class="empty-text">You have no items in your shopping cart.</span>
+                        </div>
+                    </div>
+                }
+
+            </div>
+        </div>
+
+        <div class="settings-modal @settingsModalOpenClass">
+            <div class="settings-content @settingsModalOpenClass">
+                <div class="close" @onclick="ToggleSettingsMenu">
+                    <i class="fa fa-times" aria-hidden="true"></i>
+                </div>
+                <div class="container h-100">
+                    <div class="row">
+                        <div class="col-6">
+                            <h3>Choose language:</h3>
+                            <div class="language-select language-selected">English</div>
+                            <div class="language-select">Polish</div>
+                        </div>
+                        <div class="col-6 ">
+                            <h3>Choose currency:</h3>
+                            <div class="currency-select currency-selected">USD</div>
+                            <div class="currency-select">EUR</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <div class="menu-modal @menuModalOpenClass">
+            <div class="menu-content @menuModalOpenClass ">
+                <div class="menu-close" @onclick="ToggleMenu">
+                    <i class="fa fa-times" aria-hidden="true"></i>
+                </div>
+                <div class="container h-100">
+                    <div class="logo">
+                        Simple Shop
+                    </div>
+                    <nav class="nav">
+                        <ul>
+                            <li>
+                                <NavLink class="nav-link" href="/" Match="NavLinkMatch.All">
+                                    Home
+                                </NavLink>
+                            </li>
+                            <li>
+                                <NavLink class="nav-link" href="/shop">
+                                    Shop
+                                </NavLink>
+                            </li>
+                            <li>
+                                <NavLink class="nav-link" href="/about">
+                                    About Us
+                                </NavLink>
+                            </li>
+                            <li>
+                                <NavLink class="nav-link" href="/contact">
+                                    Contact
+                                </NavLink>
+                            </li>
+                            @if (adminIsHere)
+                            {
+                                <li>
+                                    <NavLink class="nav-link" href="/admin">
+                                        Admin Panel
+                                    </NavLink>
+                                </li>
+                            }
+                            @if (supplierIsHere)
+                            {
+                                <li>
+                                    <NavLink class="nav-link mx-3" href="/supplier/products">
+                                        Supplier Panel
+                                    </NavLink>
+                                </li>
+                            }
+                        </ul>
+                    </nav>
+                </div>
+            </div>
+        </div>
+
+
+
+        @code{
+            bool adminIsHere = false;
+            bool supplierIsHere = false;
+            bool customerIsHere = false;
+
+            bool dataHasChange = false;
+
+            bool searchIconIsClicked = false;
+            bool accountIconIsClicked = false;
+            bool wishlistIconIsClicked = false;
+            bool cartIconIsClicked = false;
+            bool settingsIconIsClicked = false;
+            bool menuIconIsClicked = false;
+
+            string searchModalOpenClass => searchIconIsClicked ? "show" : null;
+            string accountModalOpenClass => accountIconIsClicked ? "show" : null;
+            string wishlistModalOpenClass => wishlistIconIsClicked ? "show" : null;
+            string cartModalOpenClass => cartIconIsClicked ? "show" : null;
+            string settingsModalOpenClass => settingsIconIsClicked ? "show" : null;
+            string menuModalOpenClass => menuIconIsClicked ? "show" : null;
+
+            List<IWishBLL> wishes;
+            IOrderBLL currentOrder;
+            string searchQuery;
+            string userID;
+
+
+            protected override void OnInitialized()
+            {
+                try
+                {
+                    var authState = AuthenticationStateProvider.GetAuthenticationStateAsync();
+                    var user = authState.Result.User;
+
+                    if (user.IsInRole("Administrator"))
+                    {
+                        adminIsHere = true;
+                    }
+                    else if (user.IsInRole("Supplier"))
+                    {
+                        supplierIsHere = true;
+                    }
+                    else if (user.IsInRole("Customer"))
+                    {
+                        customerIsHere = true;
+                        userID = _userManager.GetUserId(user);
+                    }
+
+                    currentOrder = new OrderBLL() { CustomerID = userID };
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogError(ex, "Error");
+                }
+
+            }
+
+
+
+            public void AddWish(IProductBLL product)
+            {
+                try
+                {
+                    var wish = new WishBLL() { ProductID = product.ProductID, CustomerID = userID };
+                    _wishService.Add(wish);
+
+                    WishHasChanged();
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogError(ex, "Error");
+                }
+
+            }
+
+            public void DeleteWish(IProductBLL product)
+            {
+                try
+                {
+                    _wishService.DeleteByProductAndCustomerIDs(product.ProductID, userID);
+
+                    WishHasChanged();
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogError(ex, "Error");
+                }
+
+            }
+
+            public void AddProductToCart(IProductBLL product)
+            {
+                try
+                {
+                    OrderDetailBLL orderDetail;
+
+                    var totalPrice = Math.Round(product.UnitPrice - ((product.UnitPrice / (decimal)100) * (decimal)product.Discount), 2);
+
+                    orderDetail = new OrderDetailBLL() { Price = product.UnitPrice, Quantity = 1, Discount = product.Discount, Total = totalPrice, ProductID = product.ProductID };
+
+                    if (currentOrder.OrderID == 0)
+                    {
+                        currentOrder.OrderDetails.Add(orderDetail);
+                        _orderService.Add(currentOrder);
+                    }
+                    else
+                    {
+                        orderDetail.OrderID = currentOrder.OrderID;
+                        _orderDetailService.Add(orderDetail);
+                    }
+                    OrderDetailHasChanged();
+
+                    StateHasChanged();
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogError(ex, "Error");
+                }
+
+            }
+
+            public void RemoveProductFromCart(IOrderDetailBLL orderDetail)
+            {
+                try
+                {
+                    if (orderDetail != null)
+                        _orderDetailService.Delete(orderDetail.OrderDetailID);
+
+                    OrderDetailHasChanged();
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogError(ex, "Error");
+                }
+
+            }
+
+
+            public void OrderDetailHasChanged()
+            {
+                try
+                {
+                    if (userID != null)
+                    {
+                        currentOrder = _orderService.GetOrderWithDetailsProudctAndReviewsByCustomerID(userID);
+                        dataHasChange = true;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogError(ex, "Error");
+                }
+
+            }
+
+            public void WishHasChanged()
+            {
+                try
+                {
+
+
+                    if (userID != null)
+                    {
+                        wishes = _wishService.GetAllWithProductsAndReviewsByCustomerID(userID).ToList();
+                        dataHasChange = true;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogError(ex, "Error");
+                }
+
+            }
+
+            void ToggleHomeMenu()
+            {
+                try
+                {
+                    searchIconIsClicked = false;
+                    accountIconIsClicked = false;
+                    wishlistIconIsClicked = false;
+                    cartIconIsClicked = false;
+                    settingsIconIsClicked = false;
+                    menuIconIsClicked = false;
+                    JSRuntime.InvokeAsync<bool>("Body.Overflow", true);
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogError(ex, "Error");
+                }
+
+            }
+
+            void ToggleSearchMenu()
+            {
+                try
+                {
+                    searchIconIsClicked = !searchIconIsClicked;
+                    accountIconIsClicked = false;
+                    wishlistIconIsClicked = false;
+                    cartIconIsClicked = false;
+                    settingsIconIsClicked = false;
+                    menuIconIsClicked = false;
+
+                    ChangeBodyOverflow();
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogError(ex, "Error");
+                }
+
+            }
+
+            void ToggleAccountMenu()
+            {
+                try
+                {
+                    searchIconIsClicked = false;
+                    accountIconIsClicked = !accountIconIsClicked;
+                    wishlistIconIsClicked = false;
+                    cartIconIsClicked = false;
+                    settingsIconIsClicked = false;
+                    menuIconIsClicked = false;
+
+                    ChangeBodyOverflow();
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogError(ex, "Error");
+                }
+
+            }
+
+            void ToggleWishlistMenu()
+            {
+                try
+                {
+                    searchIconIsClicked = false;
+                    accountIconIsClicked = false;
+                    wishlistIconIsClicked = !wishlistIconIsClicked;
+                    cartIconIsClicked = false;
+                    settingsIconIsClicked = false;
+                    menuIconIsClicked = false;
+
+                    wishes = null;
+                    currentOrder.OrderDetails = null;
+
+                    if (userID != null && wishlistIconIsClicked)
+                    {
+                        wishes = _wishService.GetAllWithProductsAndReviewsByCustomerID(userID).ToList();
+                        currentOrder = _orderService.GetOrderWithDetailsProudctAndReviewsByCustomerID(userID);
+                        currentOrder ??= new OrderBLL() { CustomerID = userID };
+                    }
+
+                    if (!wishlistIconIsClicked && dataHasChange)
+                    {
+                        dataHasChange = false;
+                        _dataNotificationService.NotifyDataChanged();
+                    }
+
+                    ChangeBodyOverflow();
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogError(ex, "Error");
+                }
+
+            }
+
+            void ToggleCartMenu()
+            {
+                try
+                {
+                    searchIconIsClicked = false;
+                    accountIconIsClicked = false;
+                    wishlistIconIsClicked = false;
+                    cartIconIsClicked = !cartIconIsClicked;
+                    settingsIconIsClicked = false;
+                    menuIconIsClicked = false;
+
+
+                    wishes = null;
+                    currentOrder.OrderDetails = null;
+
+                    if (userID != null && cartIconIsClicked)
+                    {
+                        wishes = _wishService.GetAllWithProductsByCustomerID(userID).ToList();
+                        currentOrder = _orderService.GetOrderWithDetailsProudctAndReviewsByCustomerID(userID);
+                        currentOrder ??= new OrderBLL() { CustomerID = userID };
+                    }
+
+                    if (!cartIconIsClicked && dataHasChange)
+                    {
+                        dataHasChange = false;
+                        _dataNotificationService.NotifyDataChanged();
+                    }
+
+
+                    ChangeBodyOverflow();
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogError(ex, "Error");
+                }
+
+            }
+
+            void ToggleSettingsMenu()
+            {
+                try
+                {
+                    searchIconIsClicked = false;
+                    accountIconIsClicked = false;
+                    wishlistIconIsClicked = false;
+                    cartIconIsClicked = false;
+                    menuIconIsClicked = false;
+                    settingsIconIsClicked = !settingsIconIsClicked;
+
+                    ChangeBodyOverflow();
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogError(ex, "Error");
+                }
+
+            }
+
+            void ToggleMenu()
+            {
+                try
+                {
+                     searchIconIsClicked = false;
+                accountIconIsClicked = false;
+                wishlistIconIsClicked = false;
+                cartIconIsClicked = false;
+                settingsIconIsClicked = false;
+                menuIconIsClicked = !menuIconIsClicked;
+
+                ChangeBodyOverflow();
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogError(ex, "Error");
+                }
+               
+            }
+
+
+            void ChangeBodyOverflow()
+            {
+                JSRuntime.InvokeAsync<bool>("Body.Overflow", (!searchIconIsClicked && !menuIconIsClicked && !accountIconIsClicked && !wishlistIconIsClicked && !cartIconIsClicked && !settingsIconIsClicked));
+            }
+
+
+            public async void Search()
+            {
+                try
+                {
+                    searchIconIsClicked = false;
+                    await JSRuntime.InvokeVoidAsync("Body.Overflow", true);
+                    NavigationManager.NavigateTo("/shop/{\"search\":\"" + searchQuery + "\"}");
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogError(ex, "Error");
+                }
+
+            }
+
+
+            public string ParseToImage(byte[] byteImage)
+            {
+                try
+                {
+                    string base64 = Convert.ToBase64String(byteImage);
+                    string imgSrc = String.Format("data:image/gif;base64,{0}", base64);
+
+                    return imgSrc;
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogError(ex, "Error");
+                    return "";
+                }
+
+            }
+        }
+    </LayoutView>
+</CascadingAuthenticationState>
+
+
+
+
+
+
+
+
+
+
+
+    @*<div class="top-row  navbar">
+            <span class="logo">  Fast<i class="fas fa-fire"></i>Shop </span>
+            <button class="navbar-toggler" @onclick="ToggleNavMenu">
+                <div id="nav-icon-humb" class="@HumburgerCssOpen">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            </button>
+        </div>
+
+        <div class="d-flex @NavMenuCssClass flex-column justify-content-center" @onclick="ToggleNavMenu">
+            <ul class="nav justify-content-center my-5 ">
+                <li class="nav-item px-3">
+                    <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+                        <span class="fas fa-home pr-1" aria-hidden="true"></span> Home
+                    </NavLink>
+                </li>
+                <li class="nav-item px-3">
+                    <NavLink class="nav-link" href="counter">
+                        <span class="fas fa-shopping-basket  pr-1" aria-hidden="true"></span> Shop
+                    </NavLink>
+                </li>
+            </ul>
+
+            <a href="#" class="btn-custom mx-3 text-center mb-2"><i class="fas fa-tags"></i> Discount</a>
+
+            <a href="#" class="btn-custom mx-3 text-center "><i class="fas fa-tags"></i> New products</a>
+
+            <ul class="nav justify-content-center mt-5 ">
+                <li class="nav-item px-3">
+                    <NavLink class="nav-link" href="cart">
+                        <span class="fas fa-shopping-cart pr-1 " aria-hidden="true"></span> Cart <span class="text-secondary">(0)</span>
+                    </NavLink>
+                </li>
+                <li class="nav-item px-3">
+                    <NavLink class="nav-link" href="favourite">
+                        <span class="fas fa-star  pr-1  " aria-hidden="true"></span> Favourite
+                    </NavLink>
+                </li>
+                <li class="nav-item px-3">
+                    <a class="nav-link">
+                        <span class="fas fa-search  pr-1  " aria-hidden="true"></span> Search
+                    </a>
+                </li>
+            </ul>
+
+            <div class="d-flex justify-content-around">
+                <NavLink href="pinterest.com">
+                    <i class="fab fa-pinterest text-secondary"></i>
+                </NavLink>
+                <NavLink href="instagram.com">
+                    <i class="fab fa-instagram  text-secondary"></i>
+                </NavLink>
+                <NavLink href="facebook.com">
+                    <i class="fab fa-facebook-f  text-secondary"></i>
+                </NavLink>
+                <NavLink href="twitter.com">
+                    <i class="fab fa-twitter  text-secondary"></i>
+                </NavLink>
+            </div>
+        </div>
+
+        @code {
+            bool collapseNavMenu = true;
+
+            string HumburgerCssOpen => collapseNavMenu ?  "open" :  null;
+
+            string NavMenuCssClass => collapseNavMenu ?  null : "collapse";
+
+            void ToggleNavMenu()
+            {
+                collapseNavMenu = !collapseNavMenu;
+            }
+        }*@

@@ -1,0 +1,1082 @@
+﻿@page "/admin/suppliers"
+@inject UserManager<ApplicationUser> _userManager;
+@inject IJSRuntime JSRuntime;
+@inject ISupplierService _supplierService;
+@inject IPaymentService _paymentService;
+@inject IMapper _mapper;
+@attribute [Authorize(Roles = "Administrator")]
+@inject ILogger<Suppliers> Logger
+
+<div class="container-fluid margin-top admin-style">
+    <MainPageTitle Title="Suppliers" />
+
+    <Breadcrumb Items="BreadcrumbItems" />
+
+    <div class="container">
+
+
+
+        @if (suppliers == null)
+        {
+            <div class="d-flex justify-content-center">
+
+                <div class="small-lds-ellipsis"><div></div><div></div><div></div><div></div></div>
+
+            </div>
+
+        }
+        else
+        {
+
+            <div class="row ">
+
+                <div class="mb-4  col-sm-6 col-md-4 ">
+                    <button class="btn btn-outline-primary w-100" @onclick="OnAddClick"> ADD SUPPLIER</button>
+                </div>
+
+                <div class="mb-4  col-sm-6 col-md-4">
+                    <button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" @onclick="ToggleSearchDropdown"><span class="d-none d-lg-inline-block">Choose operation field:</span> @searchBy</button>
+                    <div class="dropdown-menu @searchDropdownMenuShowClass">
+                        @foreach (var parameter in copyParameters)
+                        {
+                            <div class="dropdown-item" @onclick="(() => ChangeSearchBy(parameter))"> @parameter</div>
+                        }
+
+                    </div>
+                </div>
+
+
+                <div class="col-sm-6 col-md-4 mb-4">
+                    <button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" @onclick="ToggleOrderDropdown"><span class="d-none d-lg-inline-block">Choose order:</span> @orderType</button>
+                    <div class="dropdown-menu @orderDropdownMenuShowClass">
+                        <div class="dropdown-item" @onclick='(() => ChangeOderType("Ascending Order"))'> Ascending Order</div>
+                        <div class="dropdown-item" @onclick='(() => ChangeOderType("Descending Order"))'> Descending Order</div>
+                    </div>
+                </div>
+
+
+                <div class="mb-4 col-sm-6 col-md-4">
+                    <button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" @onclick="ToggleProductsPerPageDropdown">Suppliers per page: @productsPerPage</button>
+                    <div class="dropdown-menu @productsPerPageDropdownMenuShowClass">
+                        <div class="dropdown-item" @onclick='(() => ChangeProductsPerPage(10))'> 10</div>
+                        <div class="dropdown-item" @onclick='(() => ChangeProductsPerPage(20))'> 20</div>
+                        <div class="dropdown-item" @onclick='(() => ChangeProductsPerPage(50))'> 50</div>
+                        <div class="dropdown-item" @onclick='(() => ChangeProductsPerPage(100))'> 100</div>
+                        <form @onsubmit='(() => ChangeProductsPerPage(int.TryParse(inputProductsPerPage, out int n)==true? n: productsPerPage))'>
+                            <input class="form-control" placeholder="Type and press enter " @bind="inputProductsPerPage" @bind:event="oninput" />
+                        </form>
+                    </div>
+                </div>
+                <div class="col-sm-6 mb-4  col-md-4 ">
+                    <div class="input-group">
+                        <div class="input-group-prepend">
+                            <div class="input-group-text">
+                                <i class="fas fa-search"></i>
+                            </div>
+                        </div>
+                        <input type="text" placeholder="Type to search" class="form-control" @bind="searchQuery" @bind:event="oninput" @onkeyup="@HandleKeyUp" />
+                    </div>
+
+                </div>
+                <div class="col-sm-6 col-md-4 col-lg-3 mb-4">
+                    <div class="data-card-pagination">
+                        <div class="row">
+                            @if (currentPage != 1)
+                            {
+                                <div class="col-2 arrow" @onclick="() => ChangeCurrentPage(currentPage - 1)">
+                                    <i class="fas fa-chevron-left"></i>
+                                </div>
+                            }
+                            else
+                            {<div class="col-2">
+                                </div>
+                            }
+                            <div class="col-4">
+                                <form @onsubmit='(() => ChangeCurrentPage(int.TryParse(inputCurrentPage, out int n)==true? n: currentPage))'>
+                                    <input class="form-control w-100" @bind="inputCurrentPage" @bind:event="oninput" />
+                                </form>
+                            </div>
+                            <div class="col-2 from-style">
+                                <span>from</span>
+                            </div>
+                            <div class="col-2">
+
+                                <span>@totalPages</span>
+                            </div>
+                            @if (currentPage != totalPages)
+                            {
+                                <div class="col-2 arrow" @onclick="()=>ChangeCurrentPage(currentPage+1)">
+                                    <i class="fas fa-chevron-right"></i>
+                                </div>
+                            }
+                            else
+                            {<div class="col-2">
+                                </div>
+                            }
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+            if (IsSearching)
+            {
+                <div class="d-flex justify-content-center">
+
+                    <div class="small-lds-ellipsis"><div></div><div></div><div></div><div></div></div>
+
+                </div>
+            }
+            else
+            {
+                <div class="row">
+                    @foreach (var supplier in suppliers)
+                    {
+                        var subTitle = GetPropValue(supplier, searchBy) == null ? "NULL" : GetPropValue(supplier, searchBy).ToString();
+                        <div class="col-sm-6 col-md-4 mb-3">
+                            <DataCard TItem="ISupplierBLL"
+                                      Title="@supplier.CompanyName"
+                                      SubTitle="@subTitle"
+                                      Color="DataCard<ISupplierBLL>.Colors.green"
+                                      ItemData="supplier"
+                                      OnEditClick="OnEditClick"
+                                      OnDeleteClick="OnDeleteClick">
+                                <i class="fas fa-user"></i>
+                            </DataCard>
+                        </div>
+                    }
+
+                    @if (suppliers.Count == 0)
+                    {
+                        <p>No results.</p>
+                    }
+
+
+                </div>
+            }
+            <div class="d-flex justify-content-center mt-4">
+                <div class="data-card-pagination">
+                    <div class="row">
+                        @if (currentPage > 1)
+                        {
+                            <div class="col-2 arrow " @onclick="() => ChangeCurrentPage(currentPage - 1)">
+                                <i class="fas fa-chevron-left"></i>
+                            </div>
+                        }
+                        else
+                        {<div class="col-2">
+                            </div>
+                        }
+                        <div class="col-4">
+                            <form @onsubmit='(() => ChangeCurrentPage(int.TryParse(inputCurrentPage, out int n)==true? n: currentPage))'>
+                                <input class="form-control w-100" @bind="inputCurrentPage" @bind:event="oninput" />
+                            </form>
+                        </div>
+                        <div class="col-2 from-style">
+                            <span>from</span>
+                        </div>
+                        <div class="col-2">
+                            <span>@totalPages</span>
+                        </div>
+                        @if (currentPage != totalPages)
+                        {
+                            <div class="col-2 arrow" @onclick="()=>ChangeCurrentPage(currentPage+1)">
+                                <i class="fas fa-chevron-right"></i>
+                            </div>
+                        }
+                        else
+                        {<div class="col-2">
+                            </div>
+                        }
+
+                    </div>
+                </div>
+            </div>
+        }
+
+
+    </div>
+
+    <DataModal Title="Edit Supplier" DataModalIsClicked="editModalIsClicked" MaxWigth="800px">
+
+        @if (currentSupplier != null)
+        {
+
+            <EditForm class="container" Model="@currentSupplier" OnValidSubmit="@EditCurentSupplier">
+                <div class="data-modal-body row mb-4">
+                    <DataAnnotationsValidator />
+                    <div class="form-group col-md-6">
+                        <label for="SupplierID" class="control-label">SupplierID: </label>
+                        <InputText id="SupplierID" @bind-Value="currentSupplier.SupplierID" disabled class="form-control" />
+                        <ValidationMessage For="@(() => currentSupplier.SupplierID)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="PaymentID">PaymentID: </label>
+                        <InputSelect id="classification" @bind-Value="paymentId" class="form-control">
+                            <option value="">Select Payment...</option>
+                            @foreach (var payment in payments)
+                                {
+                                <option value="@payment.PaymentID">@payment.PaymentType</option>
+                                }
+                            /**/
+
+                        </InputSelect>
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="CompanyName" class="control-label">CompanyName: </label>
+                        <InputText id="CompanyName" @bind-Value="currentSupplier.CompanyName" disabled class="form-control" />
+                        <ValidationMessage For="@(() => currentSupplier.CompanyName)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="Email" class="control-label">Email: </label>
+                        <InputText id="Email" @bind-Value="currentSupplier.Email" class="form-control" disabled />
+                        <ValidationMessage For="@(() => currentSupplier.Email)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="ContactFName" class="control-label">ContactFName: </label>
+                        <InputText id="ContactFName" @bind-Value="currentSupplier.ContactFName" class="form-control" />
+                        <ValidationMessage For="@(() => currentSupplier.ContactFName)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="ContactLName" class="control-label">ContactLName: </label>
+                        <InputText id="ContactLName" @bind-Value="currentSupplier.ContactLName" class="form-control" />
+                        <ValidationMessage For="@(() => currentSupplier.ContactLName)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="ContactTitle" class="control-label">ContactTitle: </label>
+                        <InputText id="ContactTitle" @bind-Value="currentSupplier.ContactTitle" class="form-control" />
+                        <ValidationMessage For="@(() => currentSupplier.ContactTitle)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="Address_1" class="control-label">Address_1: </label>
+                        <InputText id="Address_1" @bind-Value="currentSupplier.Address_1" class="form-control" />
+                        <ValidationMessage For="@(() => currentSupplier.Address_1)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="Address_2" class="control-label">Address_2: </label>
+                        <InputText id="Address_2" @bind-Value="currentSupplier.Address_2" class="form-control" />
+                        <ValidationMessage For="@(() => currentSupplier.Address_2)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="City" class="control-label">City: </label>
+                        <InputText id="City" @bind-Value="currentSupplier.City" class="form-control" />
+                        <ValidationMessage For="@(() => currentSupplier.City)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="State" class="control-label">State: </label>
+                        <InputText id="State" @bind-Value="currentSupplier.State" class="form-control" />
+                        <ValidationMessage For="@(() => currentSupplier.State)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="PostalCode" class="control-label">PostalCode: </label>
+                        <InputText id="PostalCode" @bind-Value="currentSupplier.PostalCode" class="form-control" />
+                        <ValidationMessage For="@(() => currentSupplier.PostalCode)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="Country" class="control-label">Country: </label>
+                        <InputText id="Country" @bind-Value="currentSupplier.Country" class="form-control" />
+                        <ValidationMessage For="@(() => currentSupplier.Country)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="Phone" class="control-label">Phone: </label>
+                        <InputText id="Phone" @bind-Value="currentSupplier.Phone" class="form-control" />
+                        <ValidationMessage For="@(() => currentSupplier.Phone)" />
+                    </div>
+
+                    <div class="form-group col-md-6">
+                        <label for="URL" class="control-label">URL: </label>
+                        <InputText id="URL" @bind-Value="currentSupplier.URL" class="form-control" />
+                        <ValidationMessage For="@(() => currentSupplier.URL)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="Notes" class="control-label">Notes: </label>
+                        <InputText id="Notes" @bind-Value="currentSupplier.Notes" class="form-control" />
+                        <ValidationMessage For="@(() => currentSupplier.Notes)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="Color" class="control-label">Color: </label>
+                        <InputText id="Color" @bind-Value="currentSupplier.Color" class="form-control" />
+                        <ValidationMessage For="@(() => currentSupplier.Color)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        @if (supplierLogo != null)
+                        {
+                            <img src="@(ParseToImage(supplierLogo))" class="w-100" />
+                        }
+
+                        <InputFile OnChange="HandleFileSelected" accept="image/x-png,image/gif,image/jpeg" />
+                    </div>
+                </div>
+                <div class="data-modal-footer">
+                    <button type="submit" class="btn btn-primary mr-3">Save Changes</button>
+                    <button type="button" class="btn btn-secondary" @onclick="CloseEditModal">Close</button>
+                </div>
+
+            </EditForm>
+        }
+    </DataModal>
+
+    <DataModal Title="Add Supplier" DataModalIsClicked="addModalIsClicked" MaxWigth="800px">
+
+        @if (currentSupplier != null)
+        {
+
+            <EditForm class="container" Model="@currentSupplier" OnValidSubmit="@AddCurentSupplier">
+                <div class="data-modal-body row mb-4">
+                    <DataAnnotationsValidator />
+                    <div class="form-group col-md-6">
+                        <label for="SupplierID" class="control-label">SupplierID: </label>
+                        <InputText id="SupplierID" @bind-Value="currentSupplier.SupplierID" disabled class="form-control" />
+                        <ValidationMessage For="@(() => currentSupplier.SupplierID)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="PaymentID">PaymentID: </label>
+                        <InputSelect id="classification" @bind-Value="paymentId" class="form-control">
+                            <option value="">Select Payment...</option>
+                            @foreach (var payment in payments)
+                                {
+                                <option value="@payment.PaymentID">@payment.PaymentType</option>
+                                }
+                            /**/
+                            /**/
+                            /**/
+
+                        </InputSelect>
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="CompanyName" class="control-label">CompanyName: </label>
+                        <InputText id="CompanyName" @bind-Value="currentSupplier.CompanyName" class="form-control" />
+                        <ValidationMessage For="@(() => currentSupplier.CompanyName)" />
+                        @if (!string.IsNullOrWhiteSpace(companynameErrors))
+                        {
+                            <div class="validation-message">@companynameErrors</div>
+                        }
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="Email" class="control-label">Email: </label>
+                        <InputText id="Email" @bind-Value="currentSupplier.Email" class="form-control" />
+                        <ValidationMessage For="@(() => currentSupplier.Email)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="ContactFName" class="control-label">ContactFName: </label>
+                        <InputText id="ContactFName" @bind-Value="currentSupplier.ContactFName" class="form-control" />
+                        <ValidationMessage For="@(() => currentSupplier.ContactFName)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="ContactLName" class="control-label">ContactLName: </label>
+                        <InputText id="ContactLName" @bind-Value="currentSupplier.ContactLName" class="form-control" />
+                        <ValidationMessage For="@(() => currentSupplier.ContactLName)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="ContactTitle" class="control-label">ContactTitle: </label>
+                        <InputText id="ContactTitle" @bind-Value="currentSupplier.ContactTitle" class="form-control" />
+                        <ValidationMessage For="@(() => currentSupplier.ContactTitle)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="Address_1" class="control-label">Address_1: </label>
+                        <InputText id="Address_1" @bind-Value="currentSupplier.Address_1" class="form-control" />
+                        <ValidationMessage For="@(() => currentSupplier.Address_1)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="Address_2" class="control-label">Address_2: </label>
+                        <InputText id="Address_2" @bind-Value="currentSupplier.Address_2" class="form-control" />
+                        <ValidationMessage For="@(() => currentSupplier.Address_2)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="City" class="control-label">City: </label>
+                        <InputText id="City" @bind-Value="currentSupplier.City" class="form-control" />
+                        <ValidationMessage For="@(() => currentSupplier.City)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="State" class="control-label">State: </label>
+                        <InputText id="State" @bind-Value="currentSupplier.State" class="form-control" />
+                        <ValidationMessage For="@(() => currentSupplier.State)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="PostalCode" class="control-label">PostalCode: </label>
+                        <InputText id="PostalCode" @bind-Value="currentSupplier.PostalCode" class="form-control" />
+                        <ValidationMessage For="@(() => currentSupplier.PostalCode)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="Country" class="control-label">Country: </label>
+                        <InputText id="Country" @bind-Value="currentSupplier.Country" class="form-control" />
+                        <ValidationMessage For="@(() => currentSupplier.Country)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="Phone" class="control-label">Phone: </label>
+                        <InputText id="Phone" @bind-Value="currentSupplier.Phone" class="form-control" />
+                        <ValidationMessage For="@(() => currentSupplier.Phone)" />
+                    </div>
+
+                    <div class="form-group col-md-6">
+                        <label for="URL" class="control-label">URL: </label>
+                        <InputText id="URL" @bind-Value="currentSupplier.URL" class="form-control" />
+                        <ValidationMessage For="@(() => currentSupplier.URL)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="Notes" class="control-label">Notes: </label>
+                        <InputText id="Notes" @bind-Value="currentSupplier.Notes" class="form-control" />
+                        <ValidationMessage For="@(() => currentSupplier.Notes)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="Color" class="control-label">Color: </label>
+                        <InputText id="Color" @bind-Value="currentSupplier.Color" class="form-control" />
+                        <ValidationMessage For="@(() => currentSupplier.Color)" />
+                    </div>
+                    <div class="form-group col-md-6">
+                        <label for="Password" class="control-label">Password: </label>
+                        <InputText id="Password" @bind-Value="currentSupplier.Password" class="form-control" />
+                        <ValidationMessage For="@(() => currentSupplier.Password)" />
+                        @if (!string.IsNullOrWhiteSpace(passwordErrors))
+                        {
+                            <div class="validation-message">@passwordErrors</div>
+                        }
+                    </div>
+
+                    <div class="form-group col-md-6">
+                        @if (supplierLogo != null)
+                        {
+                            <img src="@(ParseToImage(supplierLogo))" class="w-100" />
+                        }
+
+                        <InputFile OnChange="HandleFileSelected" accept="image/x-png,image/gif,image/jpeg" />
+                    </div>
+
+
+                </div>
+                <div class="data-modal-footer">
+                    <button type="submit" class="btn btn-primary mr-3">Save </button>
+                    <button type="button" class="btn btn-secondary" @onclick="CloseAddModal">Close</button>
+                </div>
+
+            </EditForm>
+        }
+    </DataModal>
+
+    <DataModal Title="Delete Supplier" DataModalIsClicked="deleteModalIsClicked" MaxWigth="400px">
+        <div class="p-3">
+            You are sure you want to delete?
+        </div>
+        <div class="data-modal-footer">
+            <button type="button" class="btn btn-danger mr-3" @onclick="DeleteCurentSupplier"> Yes</button>
+            <button type="button" class="btn btn-secondary" @onclick="CloseDeleteModal">No</button>
+        </div>
+
+    </DataModal>
+
+
+</div>
+
+
+
+
+
+
+
+@code {
+    string[] BreadcrumbItems = new string[] { "Home", "Admin", "Suppliers" };
+
+    bool serchDropdownMenuIsClicked = false;
+    bool orderDropdownMenuIsClicked = false;
+    bool productsPerPageDropdownMenuIsClicked = false;
+    bool editModalIsClicked = false;
+    bool addModalIsClicked = false;
+    bool deleteModalIsClicked = false;
+
+    string productsPerPageDropdownMenuShowClass => productsPerPageDropdownMenuIsClicked ? "show" : null;
+    string searchDropdownMenuShowClass => serchDropdownMenuIsClicked ? "show" : null;
+    string orderDropdownMenuShowClass => orderDropdownMenuIsClicked ? "show" : null;
+
+    int productsPerPage;
+    int lastProductsPerPage;
+    string inputProductsPerPage;
+
+    string searchBy;
+
+    string orderType;
+
+    string searchQuery = "";
+    string lastSearchQuery = "";
+
+    string inputCurrentPage;
+    int currentPage;
+    int totalPages;
+
+    List<string> copyParameters;
+    bool IsSearching = false;
+    CancellationTokenSource cancelToken = new CancellationTokenSource();
+
+    private System.Timers.Timer inputTimer;
+
+    List<ISupplierBLL> suppliers = null;
+    List<ISupplierBLL> storedSuppliers = null;
+    List<IPaymentBLL> payments = null;
+
+    Supplier currentSupplier;
+    ISupplierBLL currentSupplierBLL;
+
+    byte[] supplierLogo;
+    string passwordErrors = "";
+    string companynameErrors = "";
+    string paymentId;
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            orderType = "Ascending Order";
+            productsPerPage = 10;
+
+            storedSuppliers = (await _supplierService.GetAllAsync()).ToList();
+            suppliers = storedSuppliers.Take(productsPerPage).OrderBy(x => x.SupplierID).ToList();
+
+            payments = (await _paymentService.GetAllAsync()).ToList();
+
+            copyParameters = typeof(Supplier).GetProperties().Select(p => p.Name).Take(17).ToList();
+
+            searchBy = copyParameters[0];
+
+            currentPage = 1;
+            inputCurrentPage = "1";
+            totalPages = storedSuppliers.Count() / productsPerPage;
+            if ((storedSuppliers.Count() - (totalPages * productsPerPage)) != 0)
+                totalPages++;
+
+            if (totalPages == 0) totalPages = 1;
+
+            inputTimer = new System.Timers.Timer(500);
+            inputTimer.Elapsed += OnUserFinish;
+            inputTimer.AutoReset = false;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+    }
+
+    public void OnEditClick(ISupplierBLL supplier)
+    {
+        try
+        {
+            currentSupplier = _mapper.Map<Supplier>(supplier);
+            supplierLogo = currentSupplier.Logo;
+            paymentId = currentSupplier.PaymentID.ToString();
+
+            editModalIsClicked = !editModalIsClicked;
+
+            JSRuntime.InvokeVoidAsync("Body.Overflow", !editModalIsClicked);
+
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+
+    }
+
+    public async void EditCurentSupplier()
+    {
+        try
+        {
+            editModalIsClicked = false;
+            if (supplierLogo != null) currentSupplier.Logo = supplierLogo;
+            if (!string.IsNullOrWhiteSpace(paymentId)) currentSupplier.PaymentID = int.Parse(paymentId);
+            else currentSupplier.PaymentID = null;
+            _supplierService.Update(_mapper.Map<ISupplierBLL>(currentSupplier));
+            storedSuppliers = (await _supplierService.GetAllAsync()).ToList();
+            HandleKeyUp();
+            await JSRuntime.InvokeVoidAsync("Body.Overflow", true);
+        }
+       catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+    }
+
+    public void CloseEditModal()
+    {
+        try
+        {
+            editModalIsClicked = !editModalIsClicked;
+
+            JSRuntime.InvokeVoidAsync("Body.Overflow", true);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+
+    }
+
+    public void OnAddClick()
+    {
+        try
+        {
+            currentSupplier = new Supplier();
+
+            supplierLogo = currentSupplier.Logo;
+
+            paymentId = currentSupplier.PaymentID.ToString();
+
+            companynameErrors = "";
+
+            addModalIsClicked = !addModalIsClicked;
+
+            JSRuntime.InvokeVoidAsync("Body.Overflow", !addModalIsClicked);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+    }
+
+    public void CloseAddModal()
+    {
+        try
+        {
+            addModalIsClicked = !addModalIsClicked;
+
+            JSRuntime.InvokeVoidAsync("Body.Overflow", true);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+
+    }
+
+    public async void AddCurentSupplier()
+    {
+        try
+        {
+            var user = new ApplicationUser
+            {
+                UserName = currentSupplier.Email,
+                Email = currentSupplier.Email,
+                EmailConfirmed = true,
+            };
+
+
+
+            foreach (var supplier in storedSuppliers)
+            {
+                if (currentSupplier.CompanyName.ToLower() == supplier.CompanyName.ToLower())
+                {
+                    companynameErrors = "Company Name must be unique.";
+                    return;
+                }
+
+            }
+
+            companynameErrors = "";
+            passwordErrors = "";
+
+            if (currentSupplier.Password == null)
+            {
+                passwordErrors += "Password is required.";
+                return;
+            }
+
+            if (supplierLogo != null) currentSupplier.Logo = supplierLogo;
+
+            if (!string.IsNullOrWhiteSpace(paymentId)) currentSupplier.PaymentID = int.Parse(paymentId);
+            else currentSupplier.PaymentID = null;
+
+            var result = await _userManager.CreateAsync(user, currentSupplier.Password);
+            if (result.Succeeded)
+            {
+                passwordErrors = "";
+                currentSupplier.SupplierID = user.Id;
+                _supplierService.Add(_mapper.Map<ISupplierBLL>(currentSupplier));
+                addModalIsClicked = false;
+                await _userManager.AddToRoleAsync(user, "Customer");
+                storedSuppliers = (await _supplierService.GetAllAsync()).ToList();
+                HandleKeyUp();
+                await JSRuntime.InvokeVoidAsync("Body.Overflow", true);
+                return;
+            }
+            foreach (var error in result.Errors)
+            {
+                passwordErrors += error.Description;
+            }
+
+            StateHasChanged();
+
+
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+    }
+
+    public void OnDeleteClick(ISupplierBLL customer)
+    {
+        try
+        {
+            currentSupplier = _mapper.Map<Supplier>(customer);
+            deleteModalIsClicked = !deleteModalIsClicked;
+
+            passwordErrors = "";
+
+
+            JSRuntime.InvokeVoidAsync("Body.Overflow", !deleteModalIsClicked);
+        }
+       catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+    }
+    public async void DeleteCurentSupplier()
+    {
+        try
+        {
+            var user = await _userManager.FindByIdAsync(currentSupplier.SupplierID);
+            var result = await _userManager.DeleteAsync(user);
+            if (result.Succeeded)
+            {
+                deleteModalIsClicked = false;
+                storedSuppliers = (await _supplierService.GetAllAsync()).ToList();
+                HandleKeyUp();
+                await JSRuntime.InvokeVoidAsync("Body.Overflow", true);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+    }
+
+    public void CloseDeleteModal()
+    {
+        try
+        {
+            deleteModalIsClicked = !deleteModalIsClicked;
+
+            JSRuntime.InvokeVoidAsync("Body.Overflow", true);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+
+    }
+
+    public void ToggleSearchDropdown()
+    {
+        serchDropdownMenuIsClicked = !serchDropdownMenuIsClicked;
+        orderDropdownMenuIsClicked = false;
+        productsPerPageDropdownMenuIsClicked = false;
+    }
+
+    public void ToggleOrderDropdown()
+    {
+        orderDropdownMenuIsClicked = !orderDropdownMenuIsClicked;
+        serchDropdownMenuIsClicked = false;
+        productsPerPageDropdownMenuIsClicked = false;
+    }
+
+    public void ToggleProductsPerPageDropdown()
+    {
+        productsPerPageDropdownMenuIsClicked = !productsPerPageDropdownMenuIsClicked;
+        orderDropdownMenuIsClicked = false;
+        serchDropdownMenuIsClicked = false;
+    }
+
+    public void ChangeCurrentPage(int page)
+    {
+        try
+        {
+            if (page >= totalPages)
+            {
+                currentPage = totalPages;
+                inputCurrentPage = currentPage.ToString();
+                HandleKeyUp();
+
+                return;
+            }
+
+            if (page <= 0)
+            {
+                currentPage = 1;
+                inputCurrentPage = currentPage.ToString();
+                HandleKeyUp();
+                return;
+            }
+
+            if (currentPage != page)
+            {
+                currentPage = page;
+                inputCurrentPage = currentPage.ToString();
+                HandleKeyUp();
+                return;
+            }
+        }
+       catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+
+    }
+
+    public void ChangeProductsPerPage(int productOnPage)
+    {
+        try
+        {
+            if (productsPerPage == productOnPage || productOnPage > 200) { ToggleProductsPerPageDropdown(); }
+            else
+            {
+                productsPerPage = productOnPage;
+                currentPage = 1;
+                inputCurrentPage = "1";
+                ToggleProductsPerPageDropdown();
+                HandleKeyUp();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+
+    }
+
+    public void ChangeOderType(string order)
+    {
+        try
+        {
+            if (orderType == order) { ToggleOrderDropdown(); }
+            else
+            {
+                orderType = order;
+                ToggleOrderDropdown();
+                HandleKeyUp();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+    }
+
+    public void ChangeSearchBy(string changedSearchBy)
+    {
+        try
+        {
+            if (searchBy == changedSearchBy) { ToggleSearchDropdown(); }
+            else
+            {
+                searchBy = changedSearchBy;
+                HandleKeyUp();
+                ToggleSearchDropdown();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+    }
+    public object GetPropValue(object src, string propName)
+    {
+
+        PropertyInfo propertyInfo = src.GetType().GetProperty(propName);
+
+        if (propertyInfo.PropertyType == typeof(DateTime))
+        {
+            object value = propertyInfo.GetValue(src, null);
+
+            return value;
+        }
+
+        if (propertyInfo.PropertyType == typeof(int))
+        {
+            object value = propertyInfo.GetValue(src, null);
+
+            return value == null ? 0 : value;
+        }
+
+        if (propertyInfo.PropertyType == typeof(int?))
+        {
+            object value = propertyInfo.GetValue(src, null);
+
+            return value == null ? 0 : value;
+        }
+
+        if (propertyInfo.PropertyType == typeof(double))
+        {
+            object value = propertyInfo.GetValue(src, null);
+
+            return value == null ? 0 : value;
+        }
+
+        if (propertyInfo.PropertyType == typeof(bool))
+        {
+            object value = propertyInfo.GetValue(src, null);
+
+            return value == null ? false : value;
+        }
+
+        if (propertyInfo.PropertyType == typeof(decimal))
+        {
+            object value = propertyInfo.GetValue(src, null);
+
+            return value == null ? 0 : value;
+        }
+
+        if (propertyInfo.PropertyType == typeof(float))
+        {
+            object value = propertyInfo.GetValue(src, null);
+
+            return value == null ? 0 : value;
+        }
+
+        if (propertyInfo.PropertyType == typeof(string))
+        {
+            object value = propertyInfo.GetValue(src, null);
+
+            return value == null ? "Null" : value;
+        }
+
+        return 0;
+    }
+
+
+    public void HandleKeyUp()
+    {
+        try
+        {
+            if (!IsSearching)
+            {
+                inputTimer.Stop();
+
+                inputTimer.Start();
+            }
+            else
+            {
+                cancelToken.Cancel(true);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+
+    }
+
+    public async void OnUserFinish(Object source, ElapsedEventArgs e)
+    {
+        try
+        {
+            await Task.Factory.StartNew(async () =>
+            {
+                try
+                {
+                    IsSearching = true;
+                    await InvokeAsync(() => StateHasChanged());
+
+                    List<ISupplierBLL> totalSearchPages = null;
+
+                    if (lastSearchQuery != searchQuery)
+                    {
+                        currentPage = 1;
+                        inputCurrentPage = currentPage.ToString();
+                    }
+
+                    if (orderType == "Ascending Order")
+                    {
+                        totalSearchPages = storedSuppliers.Where(c => GetPropValue(c, searchBy).ToString().ToLower().Contains(searchQuery.ToLower()))
+                        .OrderBy(c => GetPropValue(c, searchBy)).ToList();
+                        suppliers = totalSearchPages.Skip((currentPage - 1) * productsPerPage).Take(productsPerPage).ToList();
+                    }
+
+                    else if (orderType == "Descending Order")
+                    {
+                        totalSearchPages = storedSuppliers.Where(c => GetPropValue(c, searchBy).ToString().ToLower().Contains(searchQuery.ToLower()))
+                        .OrderByDescending(c => GetPropValue(c, searchBy)).ToList();
+                        suppliers = totalSearchPages.Skip((currentPage - 1) * productsPerPage).Take(productsPerPage).ToList();
+                    }
+
+
+
+
+                    IsSearching = false;
+
+                    if (lastSearchQuery != searchQuery || lastProductsPerPage != productsPerPage)
+                    {
+                        totalPages = totalSearchPages.Count() / productsPerPage;
+                        if ((totalSearchPages.Count() - (totalPages * productsPerPage)) != 0)
+                            totalPages++;
+
+                        if (totalPages == 0) totalPages = 1;
+                    }
+
+                    lastSearchQuery = searchQuery;
+                    lastProductsPerPage = productsPerPage;
+
+                    await InvokeAsync(() => StateHasChanged());
+                }
+
+                catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+            }, cancelToken.Token);
+
+            cancelToken = new CancellationTokenSource();
+
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+    }
+
+    public string ParseToImage(byte[] byteImage)
+    {
+        try
+        {
+            string base64 = Convert.ToBase64String(byteImage);
+            string imgSrc = String.Format("data:image/gif;base64,{0}", base64);
+
+            return imgSrc;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+             return "";
+        }
+
+    }
+
+    public async void HandleFileSelected(IFileListEntry[] images)
+    {
+        try
+        {
+            var image = images.FirstOrDefault();
+
+            var maxSizeBytes = 52400000;
+
+            supplierLogo = (await image.ReadAllAsync(maxSizeBytes)).ToArray();
+
+            StateHasChanged();
+        }
+       catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+
+    }
+}

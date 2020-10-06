@@ -1,0 +1,5 @@
+﻿/*xl: 1200px*/
+@import "../bootstrap/scss/_variables.scss";
+@import "../bootstrap/scss/_mixins.scss";
+@include media-breakpoint-up(xl) {
+}

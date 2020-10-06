@@ -1,0 +1,102 @@
+﻿@page "/about"
+@inject ILogger<About> Logger
+<div class="container-fluid margin-top">
+    <MainPageTitle Title="About Us" />
+
+    <Breadcrumb Items="BreadcrumbItems" />
+
+
+    <div class="about-us">
+        <div class="row">
+            <div class="col-md-6 ">
+                <div class="col-lg-7 offset-lg-5 ">
+                    <h2>OUR COMPANY</h2>
+                    <p>
+                        Lorem ipsum dolor sit amet, consectetur adipiscing elit. Maecenas erat mauris, laoreet sed purus vitae, consectetur pretium felis. Ut ac nunc finibus, auctor odio id, viverra ex. Nulla hendrerit sapien arcu, ac dapibus urna auctor convallis. Nulla sodales orci ut purus tristique, in laoreet lectus facilisis. Nunc posuere gravida dignissim. Donec congue nisl vitae velit eleifend, vitae gravida orci molestie. Proin vel quam cursus, molestie velit sit amet, auctor nisi.
+                    </p>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <img src="/images/about-us-1.jpg" alt="Alternate Text" />
+            </div>
+        </div>
+        <div class="row">
+
+            <div class="col-md-6">
+                <div class="col-lg-7">
+                    <h2>OUR APPROACH</h2>
+                    <p>
+                        Sed eu sem quis magna facilisis tincidunt. In luctus placerat quam eget finibus. Morbi volutpat odio nec eros pretium efficitur. Nam et mi ultrices, congue neque cursus, blandit est. Nunc ac pretium risus. Aenean vitae nulla venenatis orci vehicula vestibulum lacinia id quam. Sed at ligula a dui tempus luctus. Suspendisse vestibulum, risus id dictum tincidunt, elit justo tristique erat, sed mollis tellus quam in sem. Aenean vel elit sapien. Duis a tortor sodales, mollis nulla non.
+                    </p>
+                </div>
+            </div>
+            <div class="col-md-6 order-md-first">
+                <img src="/images/about-us-2.jpg" alt="Alternate Text" />
+            </div>
+        </div>
+
+    </div>
+    <div class="our-team">
+        <div class="content-heading">
+            <h2 class="title">MEET OUR TEAM</h2>
+            <div class="block-note">All the great people</div>
+        </div>
+        <div class="row">
+            <div class="col-md-4">
+                <div class="img-wrapper">
+                    <img src="/images/team-1.jpg" alt="Nazar" />
+                </div>
+                <div class="team-text">
+
+                    <h3 class="team-title">
+                        Nazar
+                    </h3>
+
+                    <div class="team-subtitle">
+                        Managing Director
+                    </div>
+
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="img-wrapper">
+                    <img src="/images/team-2.jpg" alt="Vika" />
+                </div>
+                <div class="team-text">
+
+                    <h3 class="team-title">
+                        Vika
+                    </h3>
+
+                    <div class="team-subtitle">
+                        Art Director
+                    </div>
+
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="img-wrapper">
+                    <img src="/images/team-3.jpg" alt="Anton" />
+                </div>
+                <div class="team-text">
+
+                    <h3 class="team-title">
+                        Anton
+                    </h3>
+
+                    <div class="team-subtitle">
+                        Fashion Director
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+
+</div>
+
+@code {
+    string[] BreadcrumbItems = new string[] { "Home", "About" };
+}

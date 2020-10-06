@@ -1,0 +1,151 @@
+﻿@page "/contact"
+@using Microsoft.AspNetCore.Identity.UI.Services;
+@using System.ComponentModel.DataAnnotations;
+@inject IEmailSender _emailSender;
+@inject ILogger<Contact> Logger
+
+<div class="container-fluid margin-top">
+    <MainPageTitle Title="Contact" />
+
+    <Breadcrumb Items="BreadcrumbItems" />
+
+    <div class="contactus-page">
+        <div class="content-heading">
+            <h2 class="title">Contact Us</h2>
+            <div class="block-note">We'd love to hear from you</div>
+        </div>
+        <div>
+            <div class="row contact-info">
+                <div class="col-md-4 col-xs">
+                    <i class="fas fa-phone-square-alt"></i>
+                    <div class="content">
+                        <h5>Our Contact</h5>
+                        <p>758-458-777</p>
+                        <p>nazar@nazar.com</p>
+                    </div>
+                </div>
+                <div class="col-md-4 col-xs">
+                    <i class="fas fa-map-marked-alt"></i>
+                    <div class="content">
+                        <h5>Our Office</h5>
+                        <p>
+                            Rynok Square, Ivano-Frankivsk,
+                        </p>
+                        <p>
+                            Ivano-Frankivsk Oblast, Ukraine, 76000
+                        </p>
+                    </div>
+                </div>
+                <div class="col-md-4 col-xs">
+                    <i class="fas fa-clock"></i>
+                    <div class="content">
+                        <h5>We Work</h5>
+                        <p>
+                            Monday - Friday: 8:00-18:00
+                        </p>
+                        <p>
+                            Saturday - Sunday: 09:00-18:00
+                        </p>
+                    </div>
+                </div>
+
+            </div>
+            <div class="content-heading">
+                <h2 class="title">Get in Touch</h2>
+            </div>
+            @if (MailSending)
+            {
+                <div style="text-align:center; margin-bottom:50px;"> Mail Sent, Thank You</div>
+            }
+            else
+            {
+                <EditForm Model="@customerMessage" OnValidSubmit="@SendMessage" class="row contact-form">
+                    <DataAnnotationsValidator />
+
+                    <div class="col-md-1"></div>
+                    <div class="col-xs col-md-5">
+                        <InputText @bind-Value="@customerMessage.Name" placeholder="Name"></InputText>
+                        <ValidationMessage For="@(() => customerMessage.Name)" />
+
+                        <InputText @bind-Value="@customerMessage.Email" placeholder="Email"></InputText>
+                        <ValidationMessage For="@(() => customerMessage.Email)" />
+
+                        <InputText @bind-Value="@customerMessage.Phone" placeholder="Phone"></InputText>
+                        <ValidationMessage For="@(() => customerMessage.Phone)" />
+
+
+                    </div>
+                    <div class="col-xs col-md-5">
+                        <InputTextArea rows="4" @bind-Value="@customerMessage.Text" name="message" id="contactFormMessage" placeholder="Your Message"></InputTextArea>
+                        <ValidationMessage For="@(() => customerMessage.Text)" />
+                    </div>
+                    <div class="col-md-1"></div>
+                    <button type="submit" class="btn">
+                        Send Message
+                    </button>
+                </EditForm>
+            }
+
+            <div class="row contact-maps">
+                <div class="col-12">
+                    <div class="maps">
+
+                        <div class="mapouter">
+                            <div class="gmap_canvas">
+                                <iframe id="gmap_canvas" src="https://maps.google.com/maps?q=Rynok%20Square%2C%20Ivano-Frankivsk%2C%20Ivano-Frankivsk%20Oblast%2C%20Ukraine%2C%2076000&t=&z=13&ie=UTF8&iwloc=&output=embed"
+                                        frameborder="0" scrolling="no" marginheight="0" marginwidth="0">
+                                </iframe>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+
+
+</div>
+
+@code {
+    public class Message
+    {
+        [Required]
+        [RegularExpression("^[a-zA-Z][a-zA-Z\\s]+$", ErrorMessage = "Name is incorrect.")]
+        [MaxLength(100, ErrorMessage = "Name is too long.")]
+        public string Name { get; set; }
+        [Required]
+        [EmailAddress(ErrorMessage = "Email is incorrect.")]
+        public string Email { get; set; }
+        [Required]
+        [Phone(ErrorMessage = "Phone number is incorrect.")]
+        public string Phone { get; set; }
+        [Required]
+        [MaxLength(500, ErrorMessage = "Message is too long.")]
+        public string Text { get; set; }
+
+    };
+
+    Message customerMessage = new Message();
+
+    string[] BreadcrumbItems = new string[] { "Home", "Contact" };
+
+    bool MailSending = false;
+
+    public async void SendMessage()
+    {
+        try
+        {
+             MailSending = true;
+        await _emailSender.SendEmailAsync("nazarozhga@gmail.com", "Contact", $"<div>Name: {customerMessage.Name} </div> <div>Email: {customerMessage.Email} </div><div>Phone: {customerMessage.Phone}</div><div>Message: {customerMessage.Text}</div>");
+    
+        }
+         catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Error");
+        }
+       }
+}

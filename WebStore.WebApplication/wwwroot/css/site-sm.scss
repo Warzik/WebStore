@@ -1,0 +1,23 @@
+﻿/*sm: 576px*/
+@import "../bootstrap/scss/_variables.scss";
+@import "../bootstrap/scss/_mixins.scss";
+@include media-breakpoint-up(sm) {
+
+
+    .slideshow-container {
+        position: relative;
+        margin: auto;
+
+
+        .mySlides {
+            p {
+                display: block;
+            }
+        }
+    }
+
+    .menu-content {
+        width: 400px !important;
+        right: 0;
+    }
+}

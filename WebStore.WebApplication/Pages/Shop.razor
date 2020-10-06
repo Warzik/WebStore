@@ -1,0 +1,895 @@
+﻿@page  "/shop"
+@page "/shop/{filter}"
+@inject IJSRuntime JSRuntime;
+@inject IProductService _productService;
+@inject ISupplierService _supplierService;
+@inject ICategoryService _categoryService;
+@inject IReviewService _reviewService;
+@inject IProductDetailService _productDetailService;
+@inject IOrderService _orderService;
+@inject IOrderDetailService _orderDetailService;
+@inject IProductDetailService _productDetailService;
+@inject IWishService _wishService;
+@inject UserManager<ApplicationUser> _userManager;
+@inject WebApplication.Services.DataNotificationService  _dataNotificationService;
+@implements IDisposable;
+@inject IMapper _mapper;
+@inject ILogger<Shop> Logger
+
+<div class="container-fluid margin-top shop-style">
+    <MainPageTitle Title="Shop" />
+    <Breadcrumb Items="BreadcrumbItems" />
+
+    <div class="container">
+
+
+
+        @if (products == null)
+        {
+            <div class="d-flex justify-content-center">
+
+                <div class="small-lds-ellipsis"><div></div><div></div><div></div><div></div></div>
+
+            </div>
+
+        }
+        else
+        {
+
+            <div class="row ">
+                <div class="col-12 mb-4">
+                    <span class="filter" @onclick="ToggleFilterMenu"> <i class="fas fa-filter"></i>  Filter</span>
+
+                </div>
+
+                <div class="col-sm-6 mb-4  col-md-4 ">
+                    <div class="input-group">
+                        <div class="input-group-prepend">
+                            <div class="input-group-text">
+                                <i class="fas fa-search"></i>
+                            </div>
+                        </div>
+                        <input type="text" placeholder="Type to search" class="form-control" @bind="ShopFilter.Search" @bind:event="oninput" @onkeyup="@HandleKeyUp" />
+                    </div>
+
+                </div>
+
+
+                <div class="col-sm-6 col-md-4 mb-4">
+                    <button class="btn btn-outline-secondary dropdown-toggle w-100" type="button" @onclick="ToggleOrderDropdown"><span class="d-none d-lg-inline-block">Choose order:</span> @ShopFilter.OrderBy</button>
+                    <div class="dropdown-menu @orderDropdownMenuShowClass">
+                        <div class="dropdown-item" @onclick='(() => ChangeOderType("Name Ascending"))'> Name Ascending</div>
+                        <div class="dropdown-item" @onclick='(() => ChangeOderType("Name Descending"))'> Name Descending</div>
+                        <div class="dropdown-item" @onclick='(() => ChangeOderType("Price Ascending"))'> Price Ascending</div>
+                        <div class="dropdown-item" @onclick='(() => ChangeOderType("Price Descending"))'> Price Descending</div>
+                        <div class="dropdown-item" @onclick='(() => ChangeOderType("Best Seller"))'> Best Seller</div>
+                    </div>
+                </div>
+
+
+                <div class="col-sm-6 col-md-4  mb-4">
+                    <div class="data-card-pagination">
+                        <div class="row">
+                            @if (currentPage != 1)
+                            {
+                                <div class="col-2 arrow" @onclick="() => ChangeCurrentPage(currentPage - 1)">
+                                    <i class="fas fa-chevron-left"></i>
+                                </div>
+                            }
+                            else
+                            {<div class="col-2">
+                                </div>
+                            }
+                            <div class="col-4">
+                                <form @onsubmit='(() => ChangeCurrentPage(int.TryParse(inputCurrentPage, out int n)==true? n: currentPage))'>
+                                    <input class="form-control w-100" @bind="inputCurrentPage" @bind:event="oninput" />
+                                </form>
+                            </div>
+                            <div class="col-2 from-style">
+                                <span>from</span>
+                            </div>
+                            <div class="col-2">
+
+                                <span>@totalPages</span>
+                            </div>
+                            @if (currentPage != totalPages)
+                            {
+                                <div class="col-2 arrow" @onclick="()=>ChangeCurrentPage(currentPage+1)">
+                                    <i class="fas fa-chevron-right"></i>
+                                </div>
+                            }
+                            else
+                            {<div class="col-2">
+                                </div>
+                            }
+
+                        </div>
+                    </div>
+                </div>
+
+
+            </div>
+
+
+            @if (IsSearching)
+            {
+                <div class="d-flex justify-content-center mt-4">
+
+                    <div class="small-lds-ellipsis"><div></div><div></div><div></div><div></div></div>
+
+                </div>
+            }
+            else
+            {
+                <div class="row mt-4">
+                    @foreach (var product in products)
+                    {
+                        <div class="col-6 col-md-4 col-lg-3">
+                            <ShopCard Product="product"
+                                      AuthenticatedUser="isAuthenticatedUser"
+                                      ActiveQuickView="true"
+                                      AddWish="AddWish"
+                                      DeleteWish="DeleteWish"
+                                      AddToCart="AddProductToCart"
+                                      RemoveFromCart="RemoveProductFromCart"
+                                      OnQuickViewClick="OpenQueckView"
+                                      Wishes="wishes"
+                                      OrderDetails="currentOrder.OrderDetails.ToList()" />
+                        </div>
+                    }
+
+                    @if (products.Count == 0)
+                    {
+                        <p>No results.</p>
+                    }
+
+
+                </div>
+            }
+
+
+
+            <div class="d-flex justify-content-center mt-4">
+                <div class="data-card-pagination">
+                    <div class="row">
+                        @if (currentPage > 1)
+                        {
+                            <div class="col-2 arrow " @onclick="() => ChangeCurrentPage(currentPage - 1)">
+                                <i class="fas fa-chevron-left"></i>
+                            </div>
+                        }
+                        else
+                        {<div class="col-2">
+                            </div>
+                        }
+                        <div class="col-4">
+                            <form @onsubmit='(() => ChangeCurrentPage(int.TryParse(inputCurrentPage, out int n)==true? n: currentPage))'>
+                                <input class="form-control w-100" @bind="inputCurrentPage" @bind:event="oninput" />
+                            </form>
+                        </div>
+                        <div class="col-2 from-style">
+                            <span>from</span>
+                        </div>
+                        <div class="col-2">
+                            <span>@totalPages</span>
+                        </div>
+                        @if (currentPage != totalPages)
+                        {
+                            <div class="col-2 arrow" @onclick="()=>ChangeCurrentPage(currentPage+1)">
+                                <i class="fas fa-chevron-right"></i>
+                            </div>
+                        }
+                        else
+                        {<div class="col-2">
+                            </div>
+                        }
+
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+
+</div>
+
+@if (categories != null)
+{
+    <div class="filter-modal @filterModalOpenClass">
+        <div class="filter-content  @filterModalOpenClass">
+            <div class="close " @onclick="ToggleFilterMenu">
+                <i class="fa fa-times" aria-hidden="true"></i>
+            </div>
+            <div class="container">
+
+                <h3> Collections</h3>
+                <div class="collections">
+                    @foreach (var colection in categories)
+                    {
+                        if (colection.ParentCategoryId == null)
+                        {
+                            if (colection.CategoryName == ShopFilter.Collection)
+                            {
+                                <div>
+                                    <span class="collection-item active">@colection.CategoryName</span>
+                                </div>
+                            }
+                            else
+                            {
+                                <div>
+                                    <span class="collection-item" @onclick="()=> { ShopFilter.Collection = colection.CategoryName; filterHasChange = true;  }">@colection.CategoryName</span>
+                                </div>
+                            }
+                        }
+                    }
+                </div>
+                <h3> Product Type</h3>
+                <div class="product-type">
+                    @foreach (var colection in categories)
+                    {
+                        if (colection.CategoryName == ShopFilter.Collection)
+                        {
+                            if (colection.ChildrenCategories != null && colection.ChildrenCategories.Count > 0)
+                            {
+                                foreach (var productType in colection.ChildrenCategories)
+                                {
+                                    if (productType.CategoryName == ShopFilter.Type)
+                                    {
+                                        <div>
+                                            <span class="product-type-item active">@productType.CategoryName</span>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div>
+                                            <span class="product-type-item " @onclick="()=> { ShopFilter.Type = productType.CategoryName; filterHasChange = true; }">@productType.CategoryName</span>
+                                        </div>
+                                    }
+
+                                }
+                            }
+
+                        }
+
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+}
+
+@if (products != null)
+{
+    <QuickViewModal MaxWigth="1000px"
+                    Title="Product View"
+                    ModalIsClicked="quickViewIsClicked"
+                    AuthenticatedUser="isAuthenticatedUser"
+                    Product="currentProduct"
+                    ProductDetails="currentProductDetails"
+                    ModalClosing="CloseQueckView"
+                    AddWish="AddWish"
+                    DeleteWish="DeleteWish"
+                    AddToCart="AddProductToCart"
+                    RemoveFromCart="RemoveProductFromCart"
+                    Wishes="wishes"
+                    OrderDetails="currentOrder?.OrderDetails?.ToList()"></QuickViewModal>
+}
+
+
+@code {
+    string[] BreadcrumbItems = new string[] { "Home", "Shop" };
+
+    [Parameter]
+    public string Filter { get; set; }
+
+    public ShopFilter ShopFilter = new ShopFilter();
+
+    public bool filterHasChange = false;
+
+    [CascadingParameter]
+    private Task<AuthenticationState> authenticationStateTask { get; set; }
+    public bool isAuthenticatedUser = false;
+    public string userID;
+
+
+    bool orderDropdownMenuIsClicked = false;
+    string orderDropdownMenuShowClass => orderDropdownMenuIsClicked ? "show" : null;
+
+    bool filterIconIsClicked = false;
+    string filterModalOpenClass => filterIconIsClicked ? "show" : null;
+
+    bool IsSearching = false;
+    bool quickViewIsClicked = false;
+
+    CancellationTokenSource cancelToken = new CancellationTokenSource();
+    private System.Timers.Timer inputTimer;
+
+    int productsPerPage;
+    int lastProductsPerPage;
+
+    string lastSearchQuery = "";
+
+    string inputCurrentPage;
+    int currentPage;
+    int totalPages;
+
+    IOrderBLL currentOrder = null;
+    IProductBLL currentProduct = null;
+    List<ProductBLL> products = null;
+    List<ICategoryBLL> categories = null;
+    List<IProductDetailBLL> productDetails = null;
+    List<IWishBLL> wishes = null;
+    List<IProductDetailBLL> currentProductDetails = null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var authState = await authenticationStateTask;
+            var user = authState.User;
+
+            if (user.Identity.IsAuthenticated && user.IsInRole("Customer"))
+            {
+                isAuthenticatedUser = true;
+                userID = _userManager.GetUserId(user);
+                currentOrder = _orderService.GetOrderByCustomerID(userID);
+            }
+            if (currentOrder == null)
+                currentOrder = new OrderBLL() { CustomerID = userID };
+
+            if (currentOrder.OrderDetails == null)
+                currentOrder.OrderDetails = new List<OrderDetailBLL>();
+
+            if (userID != null)
+                wishes = (await _wishService.GetAllByCustomerIDAsync(userID)).ToList();
+
+            _dataNotificationService.OnChange += HandleChangesInCartOrWishModals;
+
+            productsPerPage = 16;
+
+            if (Filter != null)
+            {
+                try
+                {
+                    ShopFilter = JsonSerializer.Deserialize<ShopFilter>(Filter);
+                }
+                catch
+                {
+
+                    //is not a json format
+                }
+
+            }
+
+            SetDefaultShopFilter();
+
+            categories = (await _categoryService.GetAllWithChildrenAndProductsAndReviewsAsync()).ToList();
+
+            inputTimer = new System.Timers.Timer(400);
+            inputTimer.Elapsed += OnUserFinish;
+            inputTimer.AutoReset = false;
+
+
+            HandleKeyUp();
+
+            currentPage = 1;
+            inputCurrentPage = currentPage.ToString();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error");
+        }
+
+
+        //totalPages = storedProducts.Count() / productsPerPage;
+        //if ((storedProducts.Count() - (totalPages * productsPerPage)) != 0)
+        //    totalPages++;
+
+        //if (totalPages == 0) totalPages = 1;
+
+
+        //storedProducts = (await _productService.GetProductsAsync()).ToList();
+        //products = storedProducts.Take(productsPerPage).OrderBy(x => x.ProductID).ToList();
+
+    }
+
+    public void HandleChangesInCartOrWishModals()
+    {
+        try
+        {
+            if (userID != null)
+            {
+                currentOrder = _orderService.GetOrderByCustomerID(userID);
+
+                wishes = _wishService.GetAllByCustomerID(userID).ToList();
+
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error");
+        }
+
+    }
+
+    public void Dispose()
+    {
+        try
+        {
+            _dataNotificationService.OnChange -= HandleChangesInCartOrWishModals;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error");
+        }
+
+    }
+
+
+    public void SetDefaultShopFilter()
+    {
+        ShopFilter.Collection = ShopFilter.Collection ?? "Men";
+        ShopFilter.OrderBy = ShopFilter.OrderBy ?? "Name Ascending";
+        ShopFilter.Search = ShopFilter.Search ?? "";
+
+        //ShopFilter.Brand = ShopFilter.Brand ?? "";
+        //ShopFilter.Type = ShopFilter.Type ?? "";
+    }
+
+
+
+    void ToggleFilterMenu()
+    {
+        try
+        {
+
+
+
+            filterIconIsClicked = !filterIconIsClicked;
+            orderDropdownMenuIsClicked = false;
+
+
+            if (filterHasChange)
+            {
+                currentPage = 1;
+                inputCurrentPage = currentPage.ToString();
+                HandleKeyUp();
+            }
+
+
+            JSRuntime.InvokeVoidAsync("Body.Overflow", !filterIconIsClicked);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error");
+        }
+    }
+
+    public void ToggleOrderDropdown()
+    {
+        orderDropdownMenuIsClicked = !orderDropdownMenuIsClicked;
+        StateHasChanged();
+    }
+
+
+    public void ChangeCurrentPage(int page)
+    {
+        try
+        {
+            if (page >= totalPages)
+            {
+                currentPage = totalPages;
+                inputCurrentPage = currentPage.ToString();
+                HandleKeyUp();
+
+                return;
+            }
+
+            if (page <= 0)
+            {
+                currentPage = 1;
+                inputCurrentPage = currentPage.ToString();
+                HandleKeyUp();
+                return;
+            }
+
+            if (currentPage != page)
+            {
+                currentPage = page;
+                inputCurrentPage = currentPage.ToString();
+                HandleKeyUp();
+                return;
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error");
+        }
+
+
+    }
+
+    public void ChangeOderType(string order)
+    {
+        try
+        {
+            if (ShopFilter.OrderBy == order) { ToggleOrderDropdown(); }
+            else
+            {
+                ShopFilter.OrderBy = order;
+                ToggleOrderDropdown();
+                HandleKeyUp();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error");
+        }
+
+    }
+    public void HandleKeyUp()
+    {
+        try
+        {
+            if (!IsSearching)
+            {
+                inputTimer.Stop();
+
+                inputTimer.Start();
+            }
+            else
+            {
+                cancelToken.Cancel(true);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error");
+        }
+    }
+
+
+    public async void OnUserFinish(Object source, ElapsedEventArgs e)
+    {
+        try
+        {
+            await Task.Factory.StartNew(async () =>
+            {
+                try
+                {
+                    IsSearching = true;
+                    await InvokeAsync(() => StateHasChanged());
+
+                    List<ProductBLL> totalSearchPages = null;
+
+                    if (lastSearchQuery != ShopFilter.Search)
+                    {
+                        currentPage = 1;
+                        inputCurrentPage = currentPage.ToString();
+                    }
+
+
+                    if (ShopFilter.OrderBy == "Name Ascending")
+                    {
+                        if (ShopFilter.Type == null)
+                        {
+
+                            totalSearchPages = new List<ProductBLL>();
+
+                            var childrenCategories = categories.FirstOrDefault(x => x.CategoryName == ShopFilter.Collection).ChildrenCategories;
+                            foreach (var item in childrenCategories)
+                            {
+
+                                var childProducts = categories.FirstOrDefault(x => x.CategoryName == item.CategoryName).Products;
+
+                                totalSearchPages.AddRange(childProducts.Where(x => x.ProductName.ToLower().Contains(ShopFilter.Search.ToLower()) || x.ProductFirm.ToLower().Contains(ShopFilter.Search.ToLower()))
+                       .OrderBy(x => x.ProductName).ToList());
+                            }
+
+
+                        }
+                        else
+                        {
+                            totalSearchPages = categories.FirstOrDefault(x => x.CategoryName == ShopFilter.Type)
+                           .Products.Where(x => x.ProductName.ToLower().Contains(ShopFilter.Search.ToLower()) || x.ProductFirm.ToLower().Contains(ShopFilter.Search.ToLower()))
+                           .OrderBy(x => x.ProductName).ToList();
+
+                        }
+
+                        products = totalSearchPages.Skip((currentPage - 1) * productsPerPage).Take(productsPerPage).ToList();
+                    }
+                    if (ShopFilter.OrderBy == "Name Descending")
+                    {
+                        if (ShopFilter.Type == null)
+                        {
+
+                            totalSearchPages = new List<ProductBLL>();
+
+                            var childrenCategories = categories.FirstOrDefault(x => x.CategoryName == ShopFilter.Collection).ChildrenCategories;
+                            foreach (var item in childrenCategories)
+                            {
+
+                                var childProducts = categories.FirstOrDefault(x => x.CategoryName == item.CategoryName).Products;
+
+                                totalSearchPages.AddRange(childProducts.Where(x => x.ProductName.ToLower().Contains(ShopFilter.Search.ToLower()) || x.ProductFirm.ToLower().Contains(ShopFilter.Search.ToLower()))
+                       .OrderByDescending(x => x.ProductName).ToList());
+                            }
+
+                        }
+                        else
+                        {
+                            totalSearchPages = categories.FirstOrDefault(x => x.CategoryName == ShopFilter.Type)
+                           .Products.Where(x => x.ProductName.ToLower().Contains(ShopFilter.Search.ToLower()) || x.ProductFirm.ToLower().Contains(ShopFilter.Search.ToLower()))
+                           .OrderByDescending(x => x.ProductName).ToList();
+
+
+                        }
+
+                        products = totalSearchPages.Skip((currentPage - 1) * productsPerPage).Take(productsPerPage).ToList();
+
+                    }
+                    if (ShopFilter.OrderBy == "Price Ascending")
+                    {
+                        if (ShopFilter.Type == null)
+                        {
+
+                            totalSearchPages = new List<ProductBLL>();
+
+                            var childrenCategories = categories.FirstOrDefault(x => x.CategoryName == ShopFilter.Collection).ChildrenCategories;
+                            foreach (var item in childrenCategories)
+                            {
+                                var childProducts = categories.FirstOrDefault(x => x.CategoryName == item.CategoryName).Products;
+
+                                totalSearchPages.AddRange(childProducts.Where(x => x.ProductName.ToLower().Contains(ShopFilter.Search.ToLower()) || x.ProductFirm.ToLower().Contains(ShopFilter.Search.ToLower()))
+                                .OrderBy(x => x.Discount != 0 ? Math.Round(x.UnitPrice - ((x.UnitPrice / (decimal)100) * (decimal)x.Discount), 2) : x.UnitPrice).ToList());
+                            }
+
+
+
+
+                        }
+                        else
+                        {
+                            totalSearchPages = categories.FirstOrDefault(x => x.CategoryName == ShopFilter.Type)
+                           .Products.Where(x => x.ProductName.ToLower().Contains(ShopFilter.Search.ToLower()) || x.ProductFirm.ToLower().Contains(ShopFilter.Search.ToLower()))
+                           .OrderBy(x => x.Discount != 0 ? Math.Round(x.UnitPrice - ((x.UnitPrice / (decimal)100) * (decimal)x.Discount), 2) : x.UnitPrice).ToList();
+
+                        }
+
+                        products = totalSearchPages.Skip((currentPage - 1) * productsPerPage).Take(productsPerPage).ToList();
+                    }
+                    if (ShopFilter.OrderBy == "Price Descending")
+                    {
+                        if (ShopFilter.Type == null)
+                        {
+
+                            totalSearchPages = new List<ProductBLL>();
+
+                            var childrenCategories = categories.FirstOrDefault(x => x.CategoryName == ShopFilter.Collection).ChildrenCategories;
+                            foreach (var item in childrenCategories)
+                            {
+                                var childProducts = categories.FirstOrDefault(x => x.CategoryName == item.CategoryName).Products;
+
+                                totalSearchPages.AddRange(childProducts.Where(x => x.ProductName.ToLower().Contains(ShopFilter.Search.ToLower()) || x.ProductFirm.ToLower().Contains(ShopFilter.Search.ToLower()))
+                       .OrderByDescending(x => x.Discount != 0 ? Math.Round(x.UnitPrice - ((x.UnitPrice / (decimal)100) * (decimal)x.Discount), 2) : x.UnitPrice).ToList());
+                            }
+
+
+                        }
+                        else
+                        {
+                            totalSearchPages = categories.FirstOrDefault(x => x.CategoryName == ShopFilter.Type)
+                           .Products.Where(x => x.ProductName.ToLower().Contains(ShopFilter.Search.ToLower()) || x.ProductFirm.ToLower().Contains(ShopFilter.Search.ToLower()))
+                           .OrderByDescending(x => x.Discount != 0 ? Math.Round(x.UnitPrice - ((x.UnitPrice / (decimal)100) * (decimal)x.Discount), 2) : x.UnitPrice).ToList();
+
+                        }
+
+                        products = totalSearchPages.Skip((currentPage - 1) * productsPerPage).Take(productsPerPage).ToList();
+
+                    }
+                    if (ShopFilter.OrderBy == "Best Seller")
+                    {
+                        if (ShopFilter.Type == null)
+                        {
+
+                            totalSearchPages = new List<ProductBLL>();
+
+                            var childrenCategories = categories.FirstOrDefault(x => x.CategoryName == ShopFilter.Collection).ChildrenCategories;
+                            foreach (var item in childrenCategories)
+                            {
+                                var childProducts = categories.FirstOrDefault(x => x.CategoryName == item.CategoryName).Products;
+
+                                totalSearchPages.AddRange(childProducts.Where(x => x.ProductName.ToLower().Contains(ShopFilter.Search.ToLower()) || x.ProductFirm.ToLower().Contains(ShopFilter.Search.ToLower()))
+                            .OrderByDescending(x => x.Discount).ToList());
+                            }
+
+
+
+                        }
+                        else
+                        {
+                            totalSearchPages = categories.FirstOrDefault(x => x.CategoryName == ShopFilter.Type)
+                           .Products.Where(x => x.ProductName.ToLower().Contains(ShopFilter.Search.ToLower()) || x.ProductFirm.ToLower().Contains(ShopFilter.Search.ToLower()))
+                            .OrderByDescending(x => x.Discount).ToList();
+
+
+                        }
+
+                        products = totalSearchPages.Skip((currentPage - 1) * productsPerPage).Take(productsPerPage).ToList();
+                    }
+
+
+                    IsSearching = false;
+
+                    if (lastSearchQuery != ShopFilter.Search || lastProductsPerPage != productsPerPage || filterHasChange
+                    || ShopFilter.OrderBy == "Best Seller")
+                    {
+                        totalPages = totalSearchPages.Count() / productsPerPage;
+                        if ((totalSearchPages.Count() - (totalPages * productsPerPage)) != 0)
+                            totalPages++;
+
+                        if (totalPages == 0) totalPages = 1;
+
+                        filterHasChange = false;
+                    }
+
+                    lastSearchQuery = ShopFilter.Search;
+                    lastProductsPerPage = productsPerPage;
+
+                    await InvokeAsync(() => StateHasChanged());
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogError(ex, "Error");
+                }
+            }, cancelToken.Token);
+
+            cancelToken = new CancellationTokenSource();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error");
+        }
+    }
+
+    public void AddWish(IProductBLL product)
+    {
+        try
+        {
+            var wish = new WishBLL() { ProductID = product.ProductID, CustomerID = userID };
+            _wishService.Add(wish);
+
+            WishHasChanged(userID);
+
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error");
+        }
+
+    }
+
+    public void DeleteWish(IProductBLL product)
+    {
+        try
+        {
+            _wishService.DeleteByProductAndCustomerIDs(product.ProductID, userID);
+
+            WishHasChanged(userID);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error");
+        }
+
+    }
+
+    public void AddProductToCart(IProductBLL product)
+    {
+        try
+        {
+            OrderDetailBLL orderDetail;
+
+            var totalPrice = Math.Round(product.UnitPrice - ((product.UnitPrice / (decimal)100) * (decimal)product.Discount), 2);
+
+            orderDetail = new OrderDetailBLL() { Price = product.UnitPrice, Quantity = 1, Discount = product.Discount, Total = totalPrice, ProductID = product.ProductID };
+
+            if (currentOrder.OrderID == 0)
+            {
+                currentOrder.OrderDetails.Add(orderDetail);
+                _orderService.Add(currentOrder);
+            }
+            else
+            {
+                orderDetail.OrderID = currentOrder.OrderID;
+                _orderDetailService.Add(orderDetail);
+            }
+
+
+            OrderDetailHasChanged(userID);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error");
+        }
+
+    }
+
+    public async void RemoveProductFromCart(IOrderDetailBLL orderDetail)
+    {
+        try
+        {
+            if (orderDetail != null)
+                await _orderDetailService.Delete(orderDetail.OrderDetailID);
+
+            OrderDetailHasChanged(userID);
+
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error");
+        }
+
+    }
+
+    public void OpenQueckView(IProductBLL product)
+    {
+        try
+        {
+            quickViewIsClicked = !quickViewIsClicked;
+
+            currentProduct = product;
+            currentProductDetails = _productDetailService.GetProductDetailsByProductID(product.ProductID).ToList();
+
+            JSRuntime.InvokeAsync<bool>("Body.Overflow", !quickViewIsClicked);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error");
+        }
+    }
+
+    public async void CloseQueckView()
+    {
+        try
+        {
+            quickViewIsClicked = !quickViewIsClicked;
+            await JSRuntime.InvokeVoidAsync("Body.Overflow", !quickViewIsClicked);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error");
+        }
+
+    }
+
+    public void OrderDetailHasChanged(string userID)
+    {
+        try
+        {
+            if (userID != null)
+                currentOrder = _orderService.GetOrderByCustomerID(userID);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error");
+        }
+    }
+
+    public void WishHasChanged(string userID)
+    {
+        try
+        {
+            if (userID != null)
+            wishes = _wishService.GetAllByCustomerID(userID).ToList();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error");
+        }
+        
+    }
+
+
+}
