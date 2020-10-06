@@ -8,4 +8,4 @@
 5) AutoMapper
 6) Bootstrap
 # Screenshots
-![Images](https://github.com/Warzik/WebStore/tree/main/Screenshots/*)
+![Images](https://github.com/Warzik/WebStore/tree/main/Screenshots/Diagram bazy danych.jpg)
