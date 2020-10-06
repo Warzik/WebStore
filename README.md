@@ -1,5 +1,7 @@
 # WebStore
- Web translator based on services: Google and Yandex.
+* Web translator based on services: Google and Yandex.
+ # Screenshots
+* All Demo Screenshots are in folder "Screenshots".
 # Technologies
 1) .NET Core
 2) ASP.NET Core 
@@ -7,5 +9,4 @@
 4) Blazor
 5) AutoMapper
 6) Bootstrap
-# Screenshots
-![Images](https://github.com/Warzik/WebStore/tree/main/Screenshots/Diagram bazy danych.jpg)
+
