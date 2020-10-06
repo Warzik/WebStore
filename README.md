@@ -8,4 +8,4 @@
 5) AutoMapper
 6) Bootstrap
 # Screenshots
-![Images](./Screenshots/*)
+![Images](https://github.com/Warzik/WebStore/blob/main/Screenshots/*)
