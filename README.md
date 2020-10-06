@@ -1,5 +1,5 @@
 # WebStore
-* Web translator based on services: Google and Yandex.
+* A richly functional online store.
  # Screenshots
 * All Demo Screenshots are in folder "Screenshots".
 # Technologies
